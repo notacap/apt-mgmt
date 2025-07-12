@@ -20,12 +20,12 @@
 
 ## Phase 3: Core Dashboard Features
 
-- [ ] Build notification system with badge display
-- [ ] Create reusable metric card components
-- [ ] Implement landlord dashboard with all metric cards
-- [ ] Add property selector with filtered views
-- [ ] Create employee dashboard layout
-- [ ] Build tenant dashboard structure
+- [x] Build notification system with badge display
+- [x] Create reusable metric card components
+- [x] Implement landlord dashboard with all metric cards
+- [x] Add property selector with filtered views
+- [x] Create employee dashboard layout
+- [x] Build tenant dashboard structure
 
 ## Phase 4: Document Management
 

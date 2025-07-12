@@ -1,0 +1,39 @@
+<!-- Reusable metric card component -->
+<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow duration-200" 
+     {% if clickable %}onclick="window.location.href='{{ link_url }}'"{% endif %}>
+    <div class="flex items-center">
+        <div class="flex-1">
+            <p class="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">{{ title }}</p>
+            <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">{{ value }}</p>
+            {% if subtitle %}
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ subtitle }}</p>
+            {% endif %}
+        </div>
+        {% if icon %}
+            <div class="flex-shrink-0">
+                <div class="w-10 h-10 bg-{{ color|default:'blue' }}-100 dark:bg-{{ color|default:'blue' }}-900 rounded-lg flex items-center justify-center">
+                    <svg class="w-6 h-6 text-{{ color|default:'blue' }}-600 dark:text-{{ color|default:'blue' }}-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        {{ icon|safe }}
+                    </svg>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+    {% if trend %}
+        <div class="mt-4 flex items-center">
+            {% if trend_direction == 'up' %}
+                <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                </svg>
+                <span class="ml-1 text-sm text-green-600 dark:text-green-400">{{ trend }}</span>
+            {% elif trend_direction == 'down' %}
+                <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"></path>
+                </svg>
+                <span class="ml-1 text-sm text-red-600 dark:text-red-400">{{ trend }}</span>
+            {% else %}
+                <span class="text-sm text-gray-500 dark:text-gray-400">{{ trend }}</span>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>

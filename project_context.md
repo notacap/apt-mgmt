@@ -29,7 +29,17 @@ This project is a comprehensive web-based platform for apartment management comp
 
 ## Current Tasks & Next Steps
 
-We are now beginning **Phase 3: Core Dashboard Features**.
+We have completed **Phase 3: Core Dashboard Features**.
+
+### Phase 3 Accomplishments:
+- **Built notification system with badge display**: Created a `Notification` model in the `communication` app with notification types, recipient targeting, and badge display in the header navigation.
+- **Created reusable metric card components**: Developed reusable metric card template with customizable icons, colors, and trend indicators.
+- **Implemented landlord dashboard with all metric cards**: Built comprehensive landlord dashboard featuring all required metrics (rent income, expenses, revenue, maintenance requests, payment status, occupancy rate, lease expirations, vacant units) with property selector and recent activity sections.
+- **Added property selector with filtered views**: Implemented property filtering dropdown in the landlord dashboard header.
+- **Created employee dashboard layout**: Built employee-focused dashboard with maintenance management, schedule view, document access, and communication features.
+- **Built tenant dashboard structure**: Developed tenant self-service portal with rent management, maintenance requests, document access, and messaging capabilities.
+
+We are now ready to begin **Phase 4: Document Management**.
 
 The immediate next task is:
-- **Build notification system with badge display**: This will involve creating a `Notification` model in the `communication` app and the necessary logic to display notifications with a badge in the UI. 
+- **Set up file upload system with secure storage**: This will involve configuring Django's file handling, creating secure upload endpoints, and implementing proper access controls for documents. 
