@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}My Profile{% endblock %}
+
+{% block content %}
+<div class="container mx-auto max-w-lg">
+    <h1 class="text-3xl font-bold mb-4">My Profile</h1>
+    <form method="post" class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="w-full bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600">Update Profile</button>
+    </form>
+</div>
+{% endblock %} 

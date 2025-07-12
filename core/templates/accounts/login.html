@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% load form_tags %}
+
+{% block title %}Login{% endblock %}
+
+{% block content %}
+<div class="container mx-auto max-w-lg">
+    <h1 class="text-3xl font-bold mb-6 text-center">Login</h1>
+    <form method="post" class="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-lg space-y-6">
+        {% csrf_token %}
+
+        {% for field in form %}
+            <div>
+                <label for="{{ field.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">{{ field.label }}</label>
+                {{ field|addclass:"w-full p-3 bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" }}
+                {% if field.help_text %}
+                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ field.help_text }}</p>
+                {% endif %}
+                {% for error in field.errors %}
+                    <p class="mt-2 text-xs text-red-600 dark:text-red-400">{{ error }}</p>
+                {% endfor %}
+            </div>
+        {% endfor %}
+
+        <button type="submit" class="w-full bg-blue-600 text-white p-3 rounded-lg font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800">Login</button>
+    </form>
+</div>
+{% endblock %} 
