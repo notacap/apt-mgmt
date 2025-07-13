@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth import get_user_model
+import uuid
 
 User = get_user_model()
 
@@ -28,3 +29,69 @@ class Notification(models.Model):
     
     def __str__(self):
         return f"{self.title} - {self.recipient.username}"
+
+
+class MessageThread(models.Model):
+    """Represents a conversation between users"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    participants = models.ManyToManyField(User, related_name="message_threads")
+    subject = models.CharField(max_length=200, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-updated_at']
+    
+    def __str__(self):
+        participants_list = ", ".join([user.get_full_name() or user.username for user in self.participants.all()[:3]])
+        if self.participants.count() > 3:
+            participants_list += f" (+{self.participants.count() - 3} more)"
+        return f"{self.subject or 'No Subject'} - {participants_list}"
+    
+    @property
+    def last_message(self):
+        return self.messages.first()
+
+
+class Message(models.Model):
+    """Individual message within a thread"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    thread = models.ForeignKey(MessageThread, on_delete=models.CASCADE, related_name="messages")
+    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name="sent_messages")
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_edited = models.BooleanField(default=False)
+    edited_at = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"Message from {self.sender.get_full_name() or self.sender.username} at {self.created_at}"
+
+
+class MessageAttachment(models.Model):
+    """File attachments for messages"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    message = models.ForeignKey(Message, on_delete=models.CASCADE, related_name="attachments")
+    file = models.FileField(upload_to='message_attachments/')
+    filename = models.CharField(max_length=255)
+    file_size = models.PositiveIntegerField()
+    content_type = models.CharField(max_length=100)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"Attachment: {self.filename}"
+
+
+class MessageReadStatus(models.Model):
+    """Track read status for each user in a thread"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    message = models.ForeignKey(Message, on_delete=models.CASCADE)
+    read_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ('user', 'message')
+    
+    def __str__(self):
+        return f"{self.user.username} read message at {self.read_at}"

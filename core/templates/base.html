@@ -74,6 +74,7 @@
                             <a href="{% url 'core:dashboard_redirect' %}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Dashboard</a>
                             <a href="{% url 'documents:list' %}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Documents</a>
                             <a href="{% url 'maintenance:list' %}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Maintenance</a>
+                            <a href="{% url 'communication:message_list' %}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Messages</a>
                             <form method="post" action="{% url 'core:logout' %}" class="w-full">
                                 {% csrf_token %}
                                 <button type="submit" class="w-full text-left block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
