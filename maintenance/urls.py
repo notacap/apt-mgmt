@@ -10,4 +10,6 @@ urlpatterns = [
     path('<int:pk>/update-status/', views.maintenance_update_status, name='update_status'),
     path('<int:pk>/add-update/', views.maintenance_add_update, name='add_update'),
     path('<int:pk>/add-invoice/', views.maintenance_add_invoice, name='add_invoice'),
+    path('invoice/<int:invoice_id>/edit/', views.maintenance_edit_invoice, name='edit_invoice'),
+    path('invoice/<int:invoice_id>/delete/', views.maintenance_delete_invoice, name='delete_invoice'),
 ]

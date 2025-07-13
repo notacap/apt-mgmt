@@ -67,9 +67,8 @@ class MaintenanceRequest(models.Model):
     scheduled_date = models.DateTimeField(null=True, blank=True)
     estimated_completion = models.DateTimeField(null=True, blank=True)
     
-    # Costs
-    estimated_cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    actual_cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    # Costs (tracked via invoices)
+    # actual_cost removed - costs tracked via MaintenanceInvoice model
     
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
@@ -108,7 +107,6 @@ class MaintenanceUpdate(models.Model):
     class UpdateType(models.TextChoices):
         STATUS_CHANGE = "STATUS_CHANGE", "Status Change"
         PROGRESS_UPDATE = "PROGRESS_UPDATE", "Progress Update"
-        COST_ESTIMATE = "COST_ESTIMATE", "Cost Estimate"
         SCHEDULING = "SCHEDULING", "Scheduling"
         COMPLETION = "COMPLETION", "Completion"
         NOTE = "NOTE", "Note"
@@ -122,7 +120,6 @@ class MaintenanceUpdate(models.Model):
     # Optional fields for specific update types
     old_status = models.CharField(max_length=20, choices=MaintenanceRequest.Status.choices, blank=True)
     new_status = models.CharField(max_length=20, choices=MaintenanceRequest.Status.choices, blank=True)
-    cost_estimate = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
 
     def __str__(self):
         return f"{self.get_update_type_display()} for {self.maintenance_request.title}"
@@ -141,6 +138,9 @@ class MaintenanceInvoice(models.Model):
     description = models.TextField(blank=True)
     uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     uploaded_at = models.DateTimeField(auto_now_add=True)
+    
+    # Link to document record for proper access control
+    document = models.ForeignKey('documents.Document', on_delete=models.SET_NULL, null=True, blank=True, related_name='maintenance_invoices')
 
     def __str__(self):
         return f"Invoice {self.invoice_number} - {self.vendor_name}"

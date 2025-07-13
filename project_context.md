@@ -4,6 +4,14 @@
 
 This project is a comprehensive web-based platform for apartment management companies, designed to streamline operations between landlords/owners, employees, and tenants. The technical stack includes Django for the backend, with HTMX, Alpine.js, and Tailwind CSS for the frontend. The platform features role-based dashboards, document management, maintenance tracking, rent collection, and communication tools.
 
+## Tech Stack
+
+- Django
+- HTMX
+- Alpine.js
+- Tailwind CDN
+- SQLite 3
+
 ## Work Completed
 
 **Phase 1: Foundation Setup** has been fully completed. The key accomplishments include:

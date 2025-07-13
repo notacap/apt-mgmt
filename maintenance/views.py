@@ -5,7 +5,8 @@ from django.http import JsonResponse
 from django.core.paginator import Paginator
 from django.db.models import Q, Count
 from users.models import User
-from .models import MaintenanceRequest, MaintenancePhoto, MaintenanceUpdate, MaintenanceCategory
+from documents.models import Document, DocumentCategory
+from .models import MaintenanceRequest, MaintenancePhoto, MaintenanceUpdate, MaintenanceCategory, MaintenanceInvoice
 from .forms import (
     MaintenanceRequestForm, MaintenancePhotoFormSet, MaintenanceUpdateForm,
     MaintenanceStatusUpdateForm, MaintenanceInvoiceForm
@@ -221,11 +222,6 @@ def maintenance_add_update(request, pk):
             update.created_by = request.user
             update.save()
             
-            # Update estimated cost if provided
-            if update.cost_estimate:
-                maintenance_request.estimated_cost = update.cost_estimate
-                maintenance_request.save()
-            
             messages.success(request, "Update added successfully.")
             return redirect('maintenance:detail', pk=pk)
     
@@ -250,20 +246,183 @@ def maintenance_add_invoice(request, pk):
             invoice.uploaded_by = request.user
             invoice.save()
             
-            # Update actual cost
-            maintenance_request.actual_cost = invoice.amount
-            maintenance_request.save()
+            # Create document record in documents module if invoice file was uploaded
+            if invoice.invoice_file:
+                try:
+                    # Get the Maintenance Records category
+                    maintenance_category = DocumentCategory.objects.get(name="Maintenance Records")
+                    
+                    # Create document record
+                    document = Document.objects.create(
+                        title=f"Maintenance Invoice - {invoice.vendor_name} (#{invoice.invoice_number})",
+                        description=f"Invoice for maintenance request: {maintenance_request.title}. Amount: ${invoice.amount}",
+                        file=invoice.invoice_file,
+                        category=maintenance_category,
+                        company=maintenance_request.property.company,
+                        property=maintenance_request.property,
+                        unit=maintenance_request.apartment_unit,
+                        access_level=Document.AccessLevel.PROPERTY,
+                        allowed_roles=["LANDLORD", "EMPLOYEE"],  # Only landlords and employees can view
+                        uploaded_by=request.user
+                    )
+                    
+                    # Link the document to the invoice
+                    invoice.document = document
+                    invoice.save()
+                    
+                except DocumentCategory.DoesNotExist:
+                    messages.warning(request, "Invoice uploaded but document category 'Maintenance Records' not found.")
+                except Exception as e:
+                    messages.warning(request, f"Invoice uploaded but couldn't create document record: {str(e)}")
             
             # Create update record
             MaintenanceUpdate.objects.create(
                 maintenance_request=maintenance_request,
-                update_type=MaintenanceUpdate.UpdateType.COST_ESTIMATE,
+                update_type=MaintenanceUpdate.UpdateType.NOTE,
                 message=f"Invoice added: {invoice.vendor_name} - ${invoice.amount}",
-                created_by=request.user,
-                cost_estimate=invoice.amount
+                created_by=request.user
             )
             
-            messages.success(request, "Invoice added successfully.")
+            messages.success(request, "Invoice added successfully and made available in documents.")
             return redirect('maintenance:detail', pk=pk)
     
     return redirect('maintenance:detail', pk=pk)
+
+
+@login_required
+def maintenance_edit_invoice(request, invoice_id):
+    """Edit an existing maintenance invoice"""
+    invoice = get_object_or_404(MaintenanceInvoice, id=invoice_id)
+    maintenance_request = invoice.maintenance_request
+    
+    # Check permissions
+    if request.user.role not in [User.Role.LANDLORD, User.Role.EMPLOYEE, User.Role.SUPERUSER]:
+        messages.error(request, "You don't have permission to edit invoices.")
+        return redirect('maintenance:detail', pk=maintenance_request.pk)
+    
+    # Check company/property access
+    if request.user.role in [User.Role.LANDLORD, User.Role.EMPLOYEE]:
+        if maintenance_request.property.company != request.user.company:
+            messages.error(request, "You don't have permission to edit this invoice.")
+            return redirect('maintenance:detail', pk=maintenance_request.pk)
+        if request.user.property and maintenance_request.property != request.user.property:
+            messages.error(request, "You don't have permission to edit this invoice.")
+            return redirect('maintenance:detail', pk=maintenance_request.pk)
+    
+    if request.method == 'POST':
+        form = MaintenanceInvoiceForm(request.POST, request.FILES, instance=invoice)
+        
+        if form.is_valid():
+            # Check if file was updated
+            file_updated = 'invoice_file' in request.FILES
+            
+            invoice = form.save(commit=False)
+            invoice.save()
+            
+            # Update document record if it exists
+            if invoice.document:
+                document = invoice.document
+                document.title = f"Maintenance Invoice - {invoice.vendor_name} (#{invoice.invoice_number})"
+                document.description = f"Invoice for maintenance request: {maintenance_request.title}. Amount: ${invoice.amount}"
+                
+                # Update file if new one was uploaded
+                if file_updated:
+                    document.file = invoice.invoice_file
+                
+                document.save()
+            elif file_updated and invoice.invoice_file:
+                # Create new document record if file was added and none existed
+                try:
+                    maintenance_category = DocumentCategory.objects.get(name="Maintenance Records")
+                    
+                    document = Document.objects.create(
+                        title=f"Maintenance Invoice - {invoice.vendor_name} (#{invoice.invoice_number})",
+                        description=f"Invoice for maintenance request: {maintenance_request.title}. Amount: ${invoice.amount}",
+                        file=invoice.invoice_file,
+                        category=maintenance_category,
+                        company=maintenance_request.property.company,
+                        property=maintenance_request.property,
+                        unit=maintenance_request.apartment_unit,
+                        access_level=Document.AccessLevel.PROPERTY,
+                        allowed_roles=["LANDLORD", "EMPLOYEE"],
+                        uploaded_by=request.user
+                    )
+                    
+                    invoice.document = document
+                    invoice.save()
+                    
+                except DocumentCategory.DoesNotExist:
+                    messages.warning(request, "Invoice updated but document category 'Maintenance Records' not found.")
+                except Exception as e:
+                    messages.warning(request, f"Invoice updated but couldn't create document record: {str(e)}")
+            
+            # Create update record
+            MaintenanceUpdate.objects.create(
+                maintenance_request=maintenance_request,
+                update_type=MaintenanceUpdate.UpdateType.NOTE,
+                message=f"Invoice updated: {invoice.vendor_name} - ${invoice.amount}",
+                created_by=request.user
+            )
+            
+            messages.success(request, "Invoice updated successfully.")
+            return redirect('maintenance:detail', pk=maintenance_request.pk)
+    else:
+        form = MaintenanceInvoiceForm(instance=invoice)
+    
+    context = {
+        'form': form,
+        'invoice': invoice,
+        'maintenance_request': maintenance_request,
+    }
+    
+    return render(request, 'maintenance/edit_invoice.html', context)
+
+
+@login_required
+def maintenance_delete_invoice(request, invoice_id):
+    """Delete a maintenance invoice"""
+    invoice = get_object_or_404(MaintenanceInvoice, id=invoice_id)
+    maintenance_request = invoice.maintenance_request
+    
+    # Check permissions
+    if request.user.role not in [User.Role.LANDLORD, User.Role.EMPLOYEE, User.Role.SUPERUSER]:
+        messages.error(request, "You don't have permission to delete invoices.")
+        return redirect('maintenance:detail', pk=maintenance_request.pk)
+    
+    # Check company/property access
+    if request.user.role in [User.Role.LANDLORD, User.Role.EMPLOYEE]:
+        if maintenance_request.property.company != request.user.company:
+            messages.error(request, "You don't have permission to delete this invoice.")
+            return redirect('maintenance:detail', pk=maintenance_request.pk)
+        if request.user.property and maintenance_request.property != request.user.property:
+            messages.error(request, "You don't have permission to delete this invoice.")
+            return redirect('maintenance:detail', pk=maintenance_request.pk)
+    
+    if request.method == 'POST':
+        vendor_name = invoice.vendor_name
+        amount = invoice.amount
+        
+        # Delete associated document if it exists
+        if invoice.document:
+            invoice.document.delete()
+        
+        # Delete the invoice
+        invoice.delete()
+        
+        # Create update record
+        MaintenanceUpdate.objects.create(
+            maintenance_request=maintenance_request,
+            update_type=MaintenanceUpdate.UpdateType.NOTE,
+            message=f"Invoice deleted: {vendor_name} - ${amount}",
+            created_by=request.user
+        )
+        
+        messages.success(request, "Invoice deleted successfully.")
+        return redirect('maintenance:detail', pk=maintenance_request.pk)
+    
+    context = {
+        'invoice': invoice,
+        'maintenance_request': maintenance_request,
+    }
+    
+    return render(request, 'maintenance/delete_invoice.html', context)

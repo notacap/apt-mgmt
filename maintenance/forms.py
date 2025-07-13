@@ -70,7 +70,7 @@ MaintenancePhotoFormSet = formset_factory(MaintenancePhotoForm, extra=3, max_num
 class MaintenanceUpdateForm(forms.ModelForm):
     class Meta:
         model = MaintenanceUpdate
-        fields = ['update_type', 'message', 'cost_estimate']
+        fields = ['update_type', 'message']
         widgets = {
             'update_type': forms.Select(attrs={
                 'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500'
@@ -80,19 +80,13 @@ class MaintenanceUpdateForm(forms.ModelForm):
                 'rows': 3,
                 'placeholder': 'Enter update details...'
             }),
-            'cost_estimate': forms.NumberInput(attrs={
-                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500',
-                'step': '0.01',
-                'min': '0',
-                'placeholder': '0.00'
-            }),
         }
 
 
 class MaintenanceStatusUpdateForm(forms.ModelForm):
     class Meta:
         model = MaintenanceRequest
-        fields = ['status', 'assigned_to', 'scheduled_date', 'estimated_completion', 'estimated_cost']
+        fields = ['status', 'assigned_to', 'scheduled_date', 'estimated_completion']
         widgets = {
             'status': forms.Select(attrs={
                 'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500'
@@ -107,12 +101,6 @@ class MaintenanceStatusUpdateForm(forms.ModelForm):
             'estimated_completion': forms.DateTimeInput(attrs={
                 'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500',
                 'type': 'datetime-local'
-            }),
-            'estimated_cost': forms.NumberInput(attrs={
-                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500',
-                'step': '0.01',
-                'min': '0',
-                'placeholder': '0.00'
             }),
         }
 
@@ -135,21 +123,21 @@ class MaintenanceInvoiceForm(forms.ModelForm):
         fields = ['vendor_name', 'invoice_number', 'amount', 'invoice_date', 'invoice_file', 'description']
         widgets = {
             'vendor_name': forms.TextInput(attrs={
-                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500',
+                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2',
                 'placeholder': 'Vendor/Company name'
             }),
             'invoice_number': forms.TextInput(attrs={
-                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500',
+                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2',
                 'placeholder': 'Invoice #'
             }),
             'amount': forms.NumberInput(attrs={
-                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500',
+                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2',
                 'step': '0.01',
                 'min': '0',
                 'placeholder': '0.00'
             }),
             'invoice_date': forms.DateInput(attrs={
-                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500',
+                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2',
                 'type': 'date'
             }),
             'invoice_file': forms.FileInput(attrs={
@@ -157,7 +145,7 @@ class MaintenanceInvoiceForm(forms.ModelForm):
                 'accept': '.pdf,.jpg,.jpeg,.png,.doc,.docx'
             }),
             'description': forms.Textarea(attrs={
-                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500',
+                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2',
                 'rows': 3,
                 'placeholder': 'Optional: Additional invoice details'
             }),

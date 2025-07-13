@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit Invoice - {{ maintenance_request.title }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto py-6 sm:px-6 lg:px-8">
+    <!-- Header -->
+    <div class="mb-8">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">Edit Invoice</h1>
+                <p class="mt-2 text-sm text-gray-600">
+                    Maintenance Request: <a href="{% url 'maintenance:detail' maintenance_request.pk %}" class="text-indigo-600 hover:text-indigo-900">{{ maintenance_request.title }}</a>
+                </p>
+            </div>
+            <div>
+                <a href="{% url 'maintenance:detail' maintenance_request.pk %}" class="bg-gray-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-700">
+                    Back to Request
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Form -->
+    <div class="bg-white shadow rounded-lg">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h2 class="text-lg font-medium text-gray-900">Invoice Details</h2>
+            <p class="mt-1 text-sm text-gray-600">Update the invoice information and file.</p>
+        </div>
+        
+        <form method="post" enctype="multipart/form-data" class="p-6">
+            {% csrf_token %}
+            
+            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <div>
+                    <label for="{{ form.vendor_name.id_for_label }}" class="block text-sm font-medium text-gray-700">Vendor Name</label>
+                    {{ form.vendor_name }}
+                    {% if form.vendor_name.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.vendor_name.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                
+                <div>
+                    <label for="{{ form.invoice_number.id_for_label }}" class="block text-sm font-medium text-gray-700">Invoice Number</label>
+                    {{ form.invoice_number }}
+                    {% if form.invoice_number.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.invoice_number.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                
+                <div>
+                    <label for="{{ form.amount.id_for_label }}" class="block text-sm font-medium text-gray-700">Amount</label>
+                    {{ form.amount }}
+                    {% if form.amount.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.amount.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                
+                <div>
+                    <label for="{{ form.invoice_date.id_for_label }}" class="block text-sm font-medium text-gray-700">Invoice Date</label>
+                    {{ form.invoice_date }}
+                    {% if form.invoice_date.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.invoice_date.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="mt-6">
+                <label for="{{ form.invoice_file.id_for_label }}" class="block text-sm font-medium text-gray-700">Invoice File</label>
+                {% if invoice.invoice_file %}
+                    <p class="mt-1 text-sm text-gray-600">
+                        Current file: 
+                        {% if invoice.document %}
+                            <a href="{% url 'documents:download' invoice.document.id %}" class="text-indigo-600 hover:text-indigo-900">{{ invoice.document.original_filename }}</a>
+                        {% else %}
+                            <span class="text-gray-500">{{ invoice.invoice_file.name|slice:"16:" }}</span>
+                        {% endif %}
+                    </p>
+                    <p class="mt-1 text-sm text-gray-500">Choose a new file to replace the current one, or leave empty to keep the existing file.</p>
+                {% else %}
+                    <p class="mt-1 text-sm text-gray-500">No file currently uploaded.</p>
+                {% endif %}
+                {{ form.invoice_file }}
+                {% if form.invoice_file.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.invoice_file.errors.0 }}</p>
+                {% endif %}
+            </div>
+            
+            <div class="mt-6">
+                <label for="{{ form.description.id_for_label }}" class="block text-sm font-medium text-gray-700">Description (optional)</label>
+                {{ form.description }}
+                {% if form.description.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.description.errors.0 }}</p>
+                {% endif %}
+            </div>
+            
+            <div class="mt-8 flex items-center justify-between">
+                <button type="submit" class="bg-indigo-600 text-white px-6 py-2 rounded-md text-sm font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    Update Invoice
+                </button>
+                <a href="{% url 'maintenance:detail' maintenance_request.pk %}" class="text-gray-500 hover:text-gray-700 text-sm font-medium">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

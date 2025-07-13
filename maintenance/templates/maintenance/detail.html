@@ -104,14 +104,96 @@
                                 <img src="{{ photo.photo.url }}" alt="{{ photo.caption|default:'Maintenance photo' }}" 
                                      class="w-full h-48 object-cover rounded-lg cursor-pointer hover:opacity-75"
                                      onclick="openImageModal('{{ photo.photo.url }}', '{{ photo.caption|default:'Maintenance photo' }}')">
+                                
+                                <!-- Download overlay button -->
+                                <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <a href="{{ photo.photo.url }}" download class="bg-white bg-opacity-90 hover:bg-opacity-100 text-gray-700 p-2 rounded-full shadow-md">
+                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                        </svg>
+                                    </a>
+                                </div>
+                                
                                 {% if photo.caption %}
                                     <p class="mt-2 text-sm text-gray-600">{{ photo.caption }}</p>
                                 {% endif %}
-                                <p class="text-xs text-gray-500">Uploaded by {{ photo.uploaded_by.get_full_name|default:photo.uploaded_by.username }} on {{ photo.uploaded_at|date:"M d, Y" }}</p>
+                                <div class="flex items-center justify-between mt-1">
+                                    <p class="text-xs text-gray-500">Uploaded by {{ photo.uploaded_by.get_full_name|default:photo.uploaded_by.username }} on {{ photo.uploaded_at|date:"M d, Y" }}</p>
+                                    <a href="{{ photo.photo.url }}" download class="text-xs text-indigo-600 hover:text-indigo-900">Download</a>
+                                </div>
                             </div>
                         {% endfor %}
                     </div>
                 </div>
+            </div>
+            {% endif %}
+
+            <!-- Invoices Section -->
+            {% if maintenance_request.invoices.exists %}
+            <div class="bg-white shadow overflow-hidden sm:rounded-md mb-6">
+                <div class="px-4 py-5 sm:px-6">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900">Invoices</h3>
+                    <p class="mt-1 max-w-2xl text-sm text-gray-500">Uploaded invoices for this maintenance request.</p>
+                </div>
+                <ul class="divide-y divide-gray-200">
+                    {% for invoice in maintenance_request.invoices.all %}
+                    <li class="px-4 py-4 sm:px-6">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0">
+                                    <svg class="h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    </svg>
+                                </div>
+                                <div class="ml-4">
+                                    <div class="flex items-center">
+                                        <p class="text-sm font-medium text-gray-900">{{ invoice.vendor_name }}</p>
+                                        <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                            ${{ invoice.amount }}
+                                        </span>
+                                    </div>
+                                    <div class="mt-1">
+                                        <p class="text-sm text-gray-600">Invoice #{{ invoice.invoice_number }}</p>
+                                        <p class="text-sm text-gray-500">{{ invoice.invoice_date }}</p>
+                                        {% if invoice.description %}
+                                        <p class="text-sm text-gray-500 mt-1">{{ invoice.description }}</p>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                <div class="flex items-center space-x-2">
+                                    {% if invoice.document %}
+                                    <a href="{% url 'documents:download' invoice.document.id %}" class="text-indigo-600 hover:text-indigo-900 text-sm font-medium">
+                                        Download
+                                    </a>
+                                    <a href="{% url 'documents:detail' invoice.document.id %}" class="text-gray-600 hover:text-gray-900 text-sm font-medium">
+                                        View in Documents
+                                    </a>
+                                    {% elif invoice.invoice_file %}
+                                    <a href="{{ invoice.invoice_file.url }}" target="_blank" class="text-indigo-600 hover:text-indigo-900 text-sm font-medium">
+                                        Download (Legacy)
+                                    </a>
+                                    {% endif %}
+                                </div>
+                                {% if can_manage %}
+                                <div class="flex items-center space-x-2">
+                                    <a href="{% url 'maintenance:edit_invoice' invoice.id %}" class="text-blue-600 hover:text-blue-900 text-sm font-medium">
+                                        Edit
+                                    </a>
+                                    <a href="{% url 'maintenance:delete_invoice' invoice.id %}" class="text-red-600 hover:text-red-900 text-sm font-medium">
+                                        Delete
+                                    </a>
+                                </div>
+                                {% endif %}
+                                <span class="text-xs text-gray-500">
+                                    Uploaded {{ invoice.uploaded_at|date:"M d, Y" }}
+                                </span>
+                            </div>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
             </div>
             {% endif %}
 
@@ -159,9 +241,6 @@
                                                 </div>
                                                 <div class="mt-2 text-sm text-gray-700">
                                                     <p>{{ update.message }}</p>
-                                                    {% if update.cost_estimate %}
-                                                        <p class="mt-1 font-medium text-green-600">Cost: ${{ update.cost_estimate }}</p>
-                                                    {% endif %}
                                                 </div>
                                             </div>
                                         </div>
@@ -204,18 +283,6 @@
                         <dd class="mt-1 text-sm text-gray-900">{{ maintenance_request.scheduled_date|date:"M d, Y g:i A" }}</dd>
                     </div>
                     {% endif %}
-                    {% if maintenance_request.estimated_cost %}
-                    <div>
-                        <dt class="text-sm font-medium text-gray-500">Estimated Cost</dt>
-                        <dd class="mt-1 text-sm text-gray-900">${{ maintenance_request.estimated_cost }}</dd>
-                    </div>
-                    {% endif %}
-                    {% if maintenance_request.actual_cost %}
-                    <div>
-                        <dt class="text-sm font-medium text-gray-500">Actual Cost</dt>
-                        <dd class="mt-1 text-sm text-gray-900">${{ maintenance_request.actual_cost }}</dd>
-                    </div>
-                    {% endif %}
                     {% if maintenance_request.completed_at %}
                     <div>
                         <dt class="text-sm font-medium text-gray-500">Completed</dt>
@@ -248,10 +315,6 @@
                                 <label for="{{ status_form.scheduled_date.id_for_label }}" class="block text-sm font-medium text-gray-700">Scheduled Date</label>
                                 {{ status_form.scheduled_date }}
                             </div>
-                            <div>
-                                <label for="{{ status_form.estimated_cost.id_for_label }}" class="block text-sm font-medium text-gray-700">Estimated Cost</label>
-                                {{ status_form.estimated_cost }}
-                            </div>
                             <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md text-sm font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                                 Update Request
                             </button>
@@ -270,18 +333,50 @@
                                 <label for="{{ update_form.message.id_for_label }}" class="block text-sm font-medium text-gray-700">Message</label>
                                 {{ update_form.message }}
                             </div>
-                            <div>
-                                <label for="{{ update_form.cost_estimate.id_for_label }}" class="block text-sm font-medium text-gray-700">Cost Estimate</label>
-                                {{ update_form.cost_estimate }}
-                            </div>
                             <button type="submit" class="w-full bg-gray-600 text-white py-2 px-4 rounded-md text-sm font-medium hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
                                 Add Update
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Add Invoice Form -->
+                    <form method="post" action="{% url 'maintenance:add_invoice' maintenance_request.pk %}" enctype="multipart/form-data" class="border-t pt-4">
+                        {% csrf_token %}
+                        <h4 class="text-lg font-medium text-gray-900 mb-4">Add Invoice</h4>
+                        <div class="space-y-4">
+                            <div>
+                                <label for="{{ invoice_form.vendor_name.id_for_label }}" class="block text-sm font-medium text-gray-700">Vendor Name</label>
+                                {{ invoice_form.vendor_name }}
+                            </div>
+                            <div>
+                                <label for="{{ invoice_form.invoice_number.id_for_label }}" class="block text-sm font-medium text-gray-700">Invoice Number</label>
+                                {{ invoice_form.invoice_number }}
+                            </div>
+                            <div>
+                                <label for="{{ invoice_form.amount.id_for_label }}" class="block text-sm font-medium text-gray-700">Amount</label>
+                                {{ invoice_form.amount }}
+                            </div>
+                            <div>
+                                <label for="{{ invoice_form.invoice_date.id_for_label }}" class="block text-sm font-medium text-gray-700">Invoice Date</label>
+                                {{ invoice_form.invoice_date }}
+                            </div>
+                            <div>
+                                <label for="{{ invoice_form.invoice_file.id_for_label }}" class="block text-sm font-medium text-gray-700">Invoice File</label>
+                                {{ invoice_form.invoice_file }}
+                            </div>
+                            <div>
+                                <label for="{{ invoice_form.description.id_for_label }}" class="block text-sm font-medium text-gray-700">Description (optional)</label>
+                                {{ invoice_form.description }}
+                            </div>
+                            <button type="submit" class="w-full bg-green-600 text-white py-2 px-4 rounded-md text-sm font-medium hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                                Add Invoice
                             </button>
                         </div>
                     </form>
                 </div>
             </div>
             {% endif %}
+
         </div>
     </div>
 </div>

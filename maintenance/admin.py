@@ -48,9 +48,6 @@ class MaintenanceRequestAdmin(admin.ModelAdmin):
         ('Assignment & Scheduling', {
             'fields': ('assigned_to', 'scheduled_date', 'estimated_completion')
         }),
-        ('Costs', {
-            'fields': ('estimated_cost', 'actual_cost')
-        }),
         ('Timestamps', {
             'fields': ('created_at', 'updated_at', 'completed_at'),
             'classes': ('collapse',)

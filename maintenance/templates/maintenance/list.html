@@ -32,7 +32,7 @@
             <form method="get" class="flex flex-wrap gap-4">
                 <div>
                     <label for="status" class="block text-xs font-medium text-gray-700 uppercase tracking-wide">Status</label>
-                    <select name="status" id="status" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                    <select name="status" id="status" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2 text-base">
                         <option value="">All Statuses</option>
                         {% for status_value, status_label in status_choices %}
                             <option value="{{ status_value }}" {% if current_status == status_value %}selected{% endif %}>
@@ -44,7 +44,7 @@
 
                 <div>
                     <label for="priority" class="block text-xs font-medium text-gray-700 uppercase tracking-wide">Priority</label>
-                    <select name="priority" id="priority" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                    <select name="priority" id="priority" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2 text-base">
                         <option value="">All Priorities</option>
                         {% for priority_value, priority_label in priority_choices %}
                             <option value="{{ priority_value }}" {% if current_priority == priority_value %}selected{% endif %}>
@@ -58,14 +58,14 @@
                     <label for="search" class="block text-xs font-medium text-gray-700 uppercase tracking-wide">Search</label>
                     <input type="text" name="search" id="search" value="{{ search_query|default:'' }}"
                            placeholder="Search by title, description, or tenant..."
-                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2 text-base">
                 </div>
 
                 <div class="flex items-end">
                     <button type="submit" class="bg-gray-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
                         Filter
                     </button>
-                    <a href="{% url 'maintenance:list' %}" class="ml-2 text-indigo-600 hover:text-indigo-900 text-sm font-medium">
+                    <a href="{% url 'maintenance:list' %}" class="ml-2 border border-indigo-600 text-indigo-600 hover:bg-indigo-600 hover:text-white px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                         Clear
                     </a>
                 </div>
