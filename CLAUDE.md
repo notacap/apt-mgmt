@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+Important Rule: DO NOT TRY TO RUN THE DEVELOPMENT SERVER. I AM RUNNING IT IN THE BACKGROUND IN A SEPARATE TERMINAL. WHEN YOU TRY TO RUN IT, I NEED TO MANUALLY KILL ALL PYTHON PROCESSES.
+
+Another Important Rule: Do not try to test newly implemented features. I will test them for you.
+
 ## Development Commands
 
 ### Running the Application
@@ -81,9 +85,9 @@ The platform supports multiple management companies through:
 - **Templates**: Located in core/templates/ with role-specific dashboards
 
 ### Current Development Status
-- **Phase 1 & 2 Complete**: Foundation setup and user management
-- **Phase 3 In Progress**: Core dashboard features and notification system
-- Next task: Build notification system in communication app
+- **Phase 1, 2 & 3 Complete**: Foundation setup, user management, and core dashboard features
+- **Phase 4 Complete**: Document management system with secure file uploads and role-based access
+- Next phase: Maintenance system (Phase 5)
 
 ### Important Files to Update
 - **project_context.md**: Update when completing major phases

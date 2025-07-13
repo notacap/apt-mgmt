@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python manage.py:*)"
+      "Bash(python manage.py:*)",
+      "Bash(mkdir:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)"
     ],
     "deny": []
   }

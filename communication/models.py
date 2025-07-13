@@ -10,6 +10,7 @@ class Notification(models.Model):
         MESSAGE = "MESSAGE", "Message"
         LEASE_EXPIRATION = "LEASE_EXPIRATION", "Lease Expiration"
         WORK_ASSIGNMENT = "WORK_ASSIGNMENT", "Work Assignment"
+        DOCUMENT_SHARED = "DOCUMENT_SHARED", "Document Shared"
         GENERAL = "GENERAL", "General"
 
     recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name="notifications")

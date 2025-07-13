@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ document.title }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="max-w-4xl mx-auto">
+        <div class="flex items-center mb-6">
+            <a href="{% url 'documents:list' %}" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200 mr-4">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                </svg>
+            </a>
+            <h1 class="text-3xl font-bold text-gray-800 dark:text-white">{{ document.title }}</h1>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Document Details -->
+            <div class="lg:col-span-2">
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl font-semibold text-gray-800 dark:text-white">Document Information</h2>
+                        <div class="flex space-x-2">
+                            <a href="{% url 'documents:download' document.id %}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm">
+                                Download
+                            </a>
+                            {% if can_share %}
+                            <a href="{% url 'documents:share' document.id %}" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm">
+                                Share
+                            </a>
+                            {% endif %}
+                            {% if document.uploaded_by == user or user.role == 'SUPERUSER' %}
+                            <a href="{% url 'documents:delete' document.id %}" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm">
+                                Delete
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div>
+                            <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">Description</h3>
+                            <p class="mt-1 text-gray-900 dark:text-white">{{ document.description|default:"No description provided" }}</p>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">File Name</h3>
+                                <p class="mt-1 text-gray-900 dark:text-white">{{ document.original_filename }}</p>
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">File Size</h3>
+                                <p class="mt-1 text-gray-900 dark:text-white">{{ document.file_size|filesizeformat }}</p>
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">File Type</h3>
+                                <p class="mt-1 text-gray-900 dark:text-white">{{ document.file_type }}</p>
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">Category</h3>
+                                <p class="mt-1 text-gray-900 dark:text-white">{{ document.category.name|default:"No Category" }}</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">Access Level</h3>
+                                <span class="mt-1 inline-flex px-2 py-1 text-xs font-semibold rounded-full 
+                                    {% if document.access_level == 'COMPANY' %}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
+                                    {% elif document.access_level == 'PROPERTY' %}bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200
+                                    {% elif document.access_level == 'UNIT' %}bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200
+                                    {% else %}bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200{% endif %}">
+                                    {{ document.get_access_level_display }}
+                                </span>
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">Uploaded By</h3>
+                                <p class="mt-1 text-gray-900 dark:text-white">{{ document.uploaded_by.get_full_name|default:document.uploaded_by.username }}</p>
+                            </div>
+                        </div>
+
+                        {% if document.property %}
+                        <div>
+                            <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">Property</h3>
+                            <p class="mt-1 text-gray-900 dark:text-white">{{ document.property.name }}</p>
+                        </div>
+                        {% endif %}
+
+                        {% if document.unit %}
+                        <div>
+                            <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">Unit</h3>
+                            <p class="mt-1 text-gray-900 dark:text-white">{{ document.unit.unit_number }}</p>
+                        </div>
+                        {% endif %}
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">Created</h3>
+                                <p class="mt-1 text-gray-900 dark:text-white">{{ document.created_at|date:"F d, Y g:i A" }}</p>
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">Last Updated</h3>
+                                <p class="mt-1 text-gray-900 dark:text-white">{{ document.updated_at|date:"F d, Y g:i A" }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sharing History -->
+            <div>
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">Sharing History</h2>
+                    
+                    {% if shares %}
+                        <div class="space-y-3">
+                            {% for share in shares %}
+                            <div class="border-l-4 border-blue-500 pl-4">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-900 dark:text-white">
+                                            {{ share.shared_by.get_full_name|default:share.shared_by.username }}
+                                        </p>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400">
+                                            shared with {{ share.shared_with.get_full_name|default:share.shared_with.username }}
+                                        </p>
+                                        {% if share.message %}
+                                        <p class="text-sm text-gray-700 dark:text-gray-300 mt-1">
+                                            "{{ share.message }}"
+                                        </p>
+                                        {% endif %}
+                                    </div>
+                                    <span class="text-xs text-gray-500 dark:text-gray-400">
+                                        {{ share.created_at|date:"M d" }}
+                                    </span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-gray-500 dark:text-gray-400 text-sm">This document hasn't been shared yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
