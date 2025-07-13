@@ -49,7 +49,7 @@ This is a Django apartment management platform with a multi-app structure design
 - **properties/**: Company, Property, and ApartmentUnit models for multi-tenancy
 - **communication/**: Messaging and notification system (planned)
 - **documents/**: Document management with role-based access (completed)
-- **maintenance/**: Maintenance request workflow (completed)
+- **maintenance/**: Comprehensive maintenance request workflow with invoice management (completed)
 - **financials/**: Rent payment and financial tracking (planned)
 
 ### Key Models and Relationships
@@ -59,7 +59,8 @@ This is a Django apartment management platform with a multi-app structure design
 - **ApartmentUnit** (properties/models.py): Individual units within properties
 - **Invitation** (users/models.py): Invitation system for user onboarding
 - **Document** (documents/models.py): Document management with role-based access control
-- **MaintenanceRequest** (maintenance/models.py): Maintenance workflow with status tracking, photos, and cost management
+- **MaintenanceRequest** (maintenance/models.py): Complete maintenance workflow with status tracking, photos, and invoice-based cost management
+- **MaintenanceInvoice** (maintenance/models.py): Invoice management with documents integration for financial tracking
 
 ### Multi-Tenancy Design
 The platform supports multiple management companies through:
@@ -89,8 +90,13 @@ The platform supports multiple management companies through:
 ### Current Development Status
 - **Phase 1, 2 & 3 Complete**: Foundation setup, user management, and core dashboard features
 - **Phase 4 Complete**: Document management system with secure file uploads and role-based access
-- **Phase 5 Complete**: Maintenance system with request workflow, photo uploads, status tracking, and cost management
-- Next phase: Communication features (Phase 6)
+- **Phase 5 Complete with Enhancements**: Comprehensive maintenance system including:
+  - Full maintenance request workflow with photo uploads and status tracking
+  - Complete invoice management (CRUD operations) with documents integration
+  - Enhanced UI/UX with improved forms, layouts, and navigation
+  - Strict role-based access control preventing tenant access to financial information
+  - Photo download functionality and improved filter controls
+- **Ready for Phase 6**: Communication features (messaging system)
 
 ### Important Files to Update
 - **project_context.md**: Update when completing major phases
@@ -101,4 +107,7 @@ The platform supports multiple management companies through:
 - Custom user model with role-based access control
 - Company-level data isolation
 - Invitation tokens for secure user onboarding
+- **Enhanced document access control**: Fixed vulnerability where role restrictions could be bypassed by property-level access
+- **Strict financial data protection**: Maintenance invoices and cost information completely hidden from tenants
+- **Secure file handling**: UUID-based filenames for uploaded documents and photos
 - DEBUG=True in development (change for production)
