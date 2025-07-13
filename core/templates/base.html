@@ -17,7 +17,11 @@
 <body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
     <header class="p-4 bg-white dark:bg-gray-800 shadow">
         <div class="container mx-auto flex justify-between items-center">
-            <h1 class="text-xl font-bold">AptMgmt</h1>
+            {% if user.is_authenticated %}
+                <a href="{% url 'core:dashboard_redirect' %}" class="text-xl font-bold hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200">AptMgmt</a>
+            {% else %}
+                <h1 class="text-xl font-bold">AptMgmt</h1>
+            {% endif %}
             <div class="flex items-center space-x-4">
                 {% if user.is_authenticated %}
                     <!-- Notification Bell -->

@@ -123,7 +123,11 @@ class Document(models.Model):
         if user.role in self.allowed_roles:
             return True
         
-        # Check access level permissions
+        # If there are specific role restrictions, don't fall back to access level permissions
+        if self.allowed_roles:
+            return False
+        
+        # Check access level permissions (only if no specific role restrictions)
         if self.access_level == self.AccessLevel.COMPANY:
             return True
         elif self.access_level == self.AccessLevel.PROPERTY:
