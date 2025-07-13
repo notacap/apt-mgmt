@@ -23,6 +23,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("", include("core.urls", namespace="core")),
     path("documents/", include("documents.urls", namespace="documents")),
+    path("maintenance/", include("maintenance.urls", namespace="maintenance")),
 ]
 
 print("DEBUG: Main URLs loaded")

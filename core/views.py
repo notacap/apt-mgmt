@@ -6,6 +6,7 @@ from users.forms import LandlordCreationForm, InvitationForm, UserProfileForm, I
 from users.models import User, Invitation
 from django.contrib.auth.models import Group
 from documents.models import Document, DocumentShare
+from maintenance.models import MaintenanceRequest
 from datetime import timedelta
 from django.utils import timezone
 
@@ -18,7 +19,7 @@ def index(request):
 
 @login_required
 def landlord_dashboard(request):
-    """Landlord dashboard with real document data"""
+    """Landlord dashboard with real document and maintenance data"""
     if not request.user.company:
         messages.error(request, "You must be assigned to a company to access the dashboard.")
         return redirect("core:login")
@@ -51,6 +52,30 @@ def landlord_dashboard(request):
         shared_with__role='TENANT'
     ).count()
     
+    # Maintenance request data
+    company_maintenance_requests = MaintenanceRequest.objects.filter(
+        property__company=request.user.company
+    )
+    
+    # Filter by property if landlord is assigned to specific property
+    if request.user.property:
+        company_maintenance_requests = company_maintenance_requests.filter(
+            property=request.user.property
+        )
+    
+    # Maintenance statistics
+    total_maintenance_requests = company_maintenance_requests.count()
+    pending_requests = company_maintenance_requests.filter(status='SUBMITTED').count()
+    in_progress_requests = company_maintenance_requests.filter(status='IN_PROGRESS').count()
+    emergency_requests = company_maintenance_requests.filter(priority='EMERGENCY').count()
+    completed_this_month = company_maintenance_requests.filter(
+        status='COMPLETED',
+        completed_at__gte=timezone.now().replace(day=1)
+    ).count()
+    
+    # Recent maintenance requests
+    recent_maintenance_requests = company_maintenance_requests.order_by('-created_at')[:5]
+    
     context = {
         'recent_documents': recent_documents,
         'company_doc_count': company_doc_count,
@@ -59,13 +84,20 @@ def landlord_dashboard(request):
         'shared_with_employees': shared_with_employees,
         'shared_with_tenants': shared_with_tenants,
         'total_documents': company_documents.count(),
+        # Maintenance data
+        'total_maintenance_requests': total_maintenance_requests,
+        'pending_requests': pending_requests,
+        'in_progress_requests': in_progress_requests,
+        'emergency_requests': emergency_requests,
+        'completed_this_month': completed_this_month,
+        'recent_maintenance_requests': recent_maintenance_requests,
     }
     
     return render(request, "dashboards/landlord.html", context)
 
 @login_required
 def employee_dashboard(request):
-    """Employee dashboard with real document data"""
+    """Employee dashboard with real document and maintenance data"""
     if not request.user.company:
         messages.error(request, "You must be assigned to a company to access the dashboard.")
         return redirect("core:login")
@@ -114,6 +146,34 @@ def employee_dashboard(request):
     else:
         property_doc_count = 0
     
+    # Maintenance request data
+    employee_maintenance_requests = MaintenanceRequest.objects.filter(
+        property__company=request.user.company
+    )
+    
+    # Filter by property if employee is assigned to specific property
+    if request.user.property:
+        employee_maintenance_requests = employee_maintenance_requests.filter(
+            property=request.user.property
+        )
+    
+    # Maintenance statistics for employee
+    assigned_to_me = employee_maintenance_requests.filter(assigned_to=request.user).count()
+    pending_assignments = employee_maintenance_requests.filter(
+        status='SUBMITTED',
+        assigned_to__isnull=True
+    ).count()
+    in_progress_assigned = employee_maintenance_requests.filter(
+        assigned_to=request.user,
+        status='IN_PROGRESS'
+    ).count()
+    emergency_requests = employee_maintenance_requests.filter(priority='EMERGENCY').count()
+    
+    # Recent maintenance requests assigned to employee
+    my_assigned_requests = employee_maintenance_requests.filter(
+        assigned_to=request.user
+    ).order_by('-created_at')[:5]
+    
     context = {
         'employee_uploads': employee_uploads,
         'shared_documents': shared_documents,
@@ -122,13 +182,19 @@ def employee_dashboard(request):
         'property_doc_count': property_doc_count,
         'total_accessible': property_documents.count(),
         'user_property': request.user.property,
+        # Maintenance data
+        'assigned_to_me': assigned_to_me,
+        'pending_assignments': pending_assignments,
+        'in_progress_assigned': in_progress_assigned,
+        'emergency_requests': emergency_requests,
+        'my_assigned_requests': my_assigned_requests,
     }
     
     return render(request, "dashboards/employee.html", context)
 
 @login_required
 def tenant_dashboard(request):
-    """Tenant dashboard with real document data"""
+    """Tenant dashboard with real document and maintenance data"""
     if not request.user.company:
         messages.error(request, "You must be assigned to a company to access the dashboard.")
         return redirect("core:login")
@@ -177,6 +243,20 @@ def tenant_dashboard(request):
         is_read=False
     ).count()
     
+    # Maintenance request data for tenant
+    tenant_maintenance_requests = MaintenanceRequest.objects.filter(
+        tenant=request.user
+    )
+    
+    # Maintenance statistics for tenant
+    total_my_requests = tenant_maintenance_requests.count()
+    open_requests = tenant_maintenance_requests.exclude(status='COMPLETED').count()
+    in_progress_requests = tenant_maintenance_requests.filter(status='IN_PROGRESS').count()
+    completed_requests = tenant_maintenance_requests.filter(status='COMPLETED').count()
+    
+    # Recent maintenance requests by tenant
+    recent_maintenance_requests = tenant_maintenance_requests.order_by('-created_at')[:3]
+    
     context = {
         'personal_documents': personal_documents,
         'shared_documents': shared_documents,
@@ -185,6 +265,12 @@ def tenant_dashboard(request):
         'shared_with_tenant_count': shared_with_tenant_count,
         'recent_shares_count': recent_shares,
         'user_property': request.user.property,
+        # Maintenance data
+        'total_my_requests': total_my_requests,
+        'open_requests': open_requests,
+        'in_progress_requests': in_progress_requests,
+        'completed_requests': completed_requests,
+        'recent_maintenance_requests': recent_maintenance_requests,
     }
     
     return render(request, "dashboards/tenant.html", context)

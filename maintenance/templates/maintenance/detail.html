@@ -1,0 +1,319 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ maintenance_request.title }}{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto py-6">
+    <!-- Header -->
+    <div class="mb-6">
+        <nav class="flex" aria-label="Breadcrumb">
+            <ol class="inline-flex items-center space-x-1 md:space-x-3">
+                <li>
+                    <a href="{% url 'maintenance:list' %}" class="text-gray-500 hover:text-gray-700 text-sm font-medium">
+                        Maintenance
+                    </a>
+                </li>
+                <li>
+                    <div class="flex items-center">
+                        <svg class="flex-shrink-0 h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span class="text-gray-500 ml-1 md:ml-2 text-sm font-medium">{{ maintenance_request.title|truncatechars:50 }}</span>
+                    </div>
+                </li>
+            </ol>
+        </nav>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Main Content -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Request Details -->
+            <div class="bg-white shadow rounded-lg">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <h1 class="text-xl font-semibold text-gray-900">{{ maintenance_request.title }}</h1>
+                        <div class="flex items-center space-x-2">
+                            <!-- Priority Badge -->
+                            {% if maintenance_request.priority == 'EMERGENCY' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                    Emergency
+                                </span>
+                            {% elif maintenance_request.priority == 'HIGH' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                                    High Priority
+                                </span>
+                            {% elif maintenance_request.priority == 'MEDIUM' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                    Medium Priority
+                                </span>
+                            {% else %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                    Low Priority
+                                </span>
+                            {% endif %}
+
+                            <!-- Status Badge -->
+                            {% if maintenance_request.status == 'COMPLETED' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    Completed
+                                </span>
+                            {% elif maintenance_request.status == 'IN_PROGRESS' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                    In Progress
+                                </span>
+                            {% elif maintenance_request.status == 'SCHEDULED' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                    Scheduled
+                                </span>
+                            {% elif maintenance_request.status == 'CANCELLED' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                    Cancelled
+                                </span>
+                            {% else %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                    Submitted
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="mt-2 text-sm text-gray-600">
+                        <span>{{ maintenance_request.category.name }}</span> • 
+                        <span>{{ maintenance_request.property.name }}</span>
+                        {% if maintenance_request.apartment_unit %} • <span>Unit {{ maintenance_request.apartment_unit.unit_number }}</span>{% endif %}
+                        {% if maintenance_request.location_details %} • <span>{{ maintenance_request.location_details }}</span>{% endif %}
+                    </div>
+                </div>
+
+                <div class="px-6 py-4">
+                    <h3 class="text-lg font-medium text-gray-900 mb-3">Description</h3>
+                    <p class="text-gray-700 whitespace-pre-line">{{ maintenance_request.description }}</p>
+                </div>
+            </div>
+
+            <!-- Photos -->
+            {% if maintenance_request.photos.exists %}
+            <div class="bg-white shadow rounded-lg">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-medium text-gray-900">Photos</h3>
+                </div>
+                <div class="px-6 py-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {% for photo in maintenance_request.photos.all %}
+                            <div class="group relative">
+                                <img src="{{ photo.photo.url }}" alt="{{ photo.caption|default:'Maintenance photo' }}" 
+                                     class="w-full h-48 object-cover rounded-lg cursor-pointer hover:opacity-75"
+                                     onclick="openImageModal('{{ photo.photo.url }}', '{{ photo.caption|default:'Maintenance photo' }}')">
+                                {% if photo.caption %}
+                                    <p class="mt-2 text-sm text-gray-600">{{ photo.caption }}</p>
+                                {% endif %}
+                                <p class="text-xs text-gray-500">Uploaded by {{ photo.uploaded_by.get_full_name|default:photo.uploaded_by.username }} on {{ photo.uploaded_at|date:"M d, Y" }}</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Updates Timeline -->
+            <div class="bg-white shadow rounded-lg">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-medium text-gray-900">Updates & Timeline</h3>
+                </div>
+                <div class="px-6 py-4">
+                    <div class="flow-root">
+                        <ul class="-mb-8">
+                            {% for update in updates %}
+                                <li>
+                                    <div class="relative pb-8">
+                                        {% if not forloop.last %}
+                                            <span class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true"></span>
+                                        {% endif %}
+                                        <div class="relative flex space-x-3">
+                                            <div>
+                                                <span class="h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white
+                                                    {% if update.update_type == 'STATUS_CHANGE' %}bg-blue-500
+                                                    {% elif update.update_type == 'COST_ESTIMATE' %}bg-green-500
+                                                    {% elif update.update_type == 'SCHEDULING' %}bg-purple-500
+                                                    {% elif update.update_type == 'COMPLETION' %}bg-green-600
+                                                    {% else %}bg-gray-400{% endif %}">
+                                                    <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                                        {% if update.update_type == 'STATUS_CHANGE' %}
+                                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                                        {% elif update.update_type == 'COST_ESTIMATE' %}
+                                                            <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"></path>
+                                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clip-rule="evenodd"></path>
+                                                        {% else %}
+                                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                                                        {% endif %}
+                                                    </svg>
+                                                </span>
+                                            </div>
+                                            <div class="min-w-0 flex-1">
+                                                <div>
+                                                    <div class="text-sm">
+                                                        <span class="font-medium text-gray-900">{{ update.created_by.get_full_name|default:update.created_by.username }}</span>
+                                                        <span class="text-gray-500">{{ update.get_update_type_display|lower }}</span>
+                                                    </div>
+                                                    <p class="mt-0.5 text-xs text-gray-500">{{ update.created_at|date:"M d, Y g:i A" }}</p>
+                                                </div>
+                                                <div class="mt-2 text-sm text-gray-700">
+                                                    <p>{{ update.message }}</p>
+                                                    {% if update.cost_estimate %}
+                                                        <p class="mt-1 font-medium text-green-600">Cost: ${{ update.cost_estimate }}</p>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </li>
+                            {% empty %}
+                                <li class="text-center text-gray-500 py-4">No updates yet.</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="space-y-6">
+            <!-- Request Info -->
+            <div class="bg-white shadow rounded-lg">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-medium text-gray-900">Request Information</h3>
+                </div>
+                <div class="px-6 py-4 space-y-4">
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Submitted by</dt>
+                        <dd class="mt-1 text-sm text-gray-900">{{ maintenance_request.tenant.get_full_name|default:maintenance_request.tenant.username }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Created</dt>
+                        <dd class="mt-1 text-sm text-gray-900">{{ maintenance_request.created_at|date:"M d, Y g:i A" }}</dd>
+                    </div>
+                    {% if maintenance_request.assigned_to %}
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Assigned to</dt>
+                        <dd class="mt-1 text-sm text-gray-900">{{ maintenance_request.assigned_to.get_full_name|default:maintenance_request.assigned_to.username }}</dd>
+                    </div>
+                    {% endif %}
+                    {% if maintenance_request.scheduled_date %}
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Scheduled</dt>
+                        <dd class="mt-1 text-sm text-gray-900">{{ maintenance_request.scheduled_date|date:"M d, Y g:i A" }}</dd>
+                    </div>
+                    {% endif %}
+                    {% if maintenance_request.estimated_cost %}
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Estimated Cost</dt>
+                        <dd class="mt-1 text-sm text-gray-900">${{ maintenance_request.estimated_cost }}</dd>
+                    </div>
+                    {% endif %}
+                    {% if maintenance_request.actual_cost %}
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Actual Cost</dt>
+                        <dd class="mt-1 text-sm text-gray-900">${{ maintenance_request.actual_cost }}</dd>
+                    </div>
+                    {% endif %}
+                    {% if maintenance_request.completed_at %}
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Completed</dt>
+                        <dd class="mt-1 text-sm text-gray-900">{{ maintenance_request.completed_at|date:"M d, Y g:i A" }}</dd>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Management Actions -->
+            {% if can_manage %}
+            <div class="bg-white shadow rounded-lg">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-medium text-gray-900">Management</h3>
+                </div>
+                <div class="px-6 py-4 space-y-4">
+                    <!-- Status Update Form -->
+                    <form method="post" action="{% url 'maintenance:update_status' maintenance_request.pk %}">
+                        {% csrf_token %}
+                        <div class="space-y-4">
+                            <div>
+                                <label for="{{ status_form.status.id_for_label }}" class="block text-sm font-medium text-gray-700">Status</label>
+                                {{ status_form.status }}
+                            </div>
+                            <div>
+                                <label for="{{ status_form.assigned_to.id_for_label }}" class="block text-sm font-medium text-gray-700">Assign to</label>
+                                {{ status_form.assigned_to }}
+                            </div>
+                            <div>
+                                <label for="{{ status_form.scheduled_date.id_for_label }}" class="block text-sm font-medium text-gray-700">Scheduled Date</label>
+                                {{ status_form.scheduled_date }}
+                            </div>
+                            <div>
+                                <label for="{{ status_form.estimated_cost.id_for_label }}" class="block text-sm font-medium text-gray-700">Estimated Cost</label>
+                                {{ status_form.estimated_cost }}
+                            </div>
+                            <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md text-sm font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                Update Request
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Add Update Form -->
+                    <form method="post" action="{% url 'maintenance:add_update' maintenance_request.pk %}" class="border-t pt-4">
+                        {% csrf_token %}
+                        <div class="space-y-4">
+                            <div>
+                                <label for="{{ update_form.update_type.id_for_label }}" class="block text-sm font-medium text-gray-700">Update Type</label>
+                                {{ update_form.update_type }}
+                            </div>
+                            <div>
+                                <label for="{{ update_form.message.id_for_label }}" class="block text-sm font-medium text-gray-700">Message</label>
+                                {{ update_form.message }}
+                            </div>
+                            <div>
+                                <label for="{{ update_form.cost_estimate.id_for_label }}" class="block text-sm font-medium text-gray-700">Cost Estimate</label>
+                                {{ update_form.cost_estimate }}
+                            </div>
+                            <button type="submit" class="w-full bg-gray-600 text-white py-2 px-4 rounded-md text-sm font-medium hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                                Add Update
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Image Modal -->
+<div id="imageModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50" onclick="closeImageModal()">
+    <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full" onclick="event.stopPropagation()">
+            <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-medium text-gray-900" id="modalTitle">Photo</h3>
+                    <button type="button" class="text-gray-400 hover:text-gray-600" onclick="closeImageModal()">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                <img id="modalImage" src="" alt="" class="w-full h-auto rounded">
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function openImageModal(src, caption) {
+    document.getElementById('modalImage').src = src;
+    document.getElementById('modalTitle').textContent = caption;
+    document.getElementById('imageModal').classList.remove('hidden');
+}
+
+function closeImageModal() {
+    document.getElementById('imageModal').classList.add('hidden');
+}
+</script>
+{% endblock %}

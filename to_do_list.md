@@ -38,13 +38,13 @@
 
 ## Phase 5: Maintenance System
 
-- [ ] Create maintenance request model and workflow
-- [ ] Build tenant maintenance request creation form
-- [ ] Implement photo upload for maintenance requests
-- [ ] Create maintenance management interface for landlords/employees
-- [ ] Add status tracking and updates
-- [ ] Build maintenance scheduling system
-- [ ] Implement cost tracking and invoice uploads
+- [x] Create maintenance request model and workflow
+- [x] Build tenant maintenance request creation form
+- [x] Implement photo upload for maintenance requests
+- [x] Create maintenance management interface for landlords/employees
+- [x] Add status tracking and updates
+- [x] Build maintenance scheduling system
+- [x] Implement cost tracking and invoice uploads
 
 ## Phase 6: Communication Features
 

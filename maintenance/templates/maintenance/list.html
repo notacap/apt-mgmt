@@ -1,0 +1,249 @@
+{% extends 'base.html' %}
+
+{% block title %}Maintenance Requests{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto py-6">
+    <div class="bg-white shadow rounded-lg">
+        <!-- Header -->
+        <div class="px-6 py-4 border-b border-gray-200">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-xl font-semibold text-gray-900">Maintenance Requests</h1>
+                    <p class="mt-1 text-sm text-gray-600">
+                        {% if user.role == 'TENANT' %}
+                            Your maintenance requests
+                        {% else %}
+                            Manage maintenance requests for your properties
+                        {% endif %}
+                    </p>
+                </div>
+                {% if user.role == 'TENANT' %}
+                <a href="{% url 'maintenance:create' %}" 
+                   class="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    New Request
+                </a>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+            <form method="get" class="flex flex-wrap gap-4">
+                <div>
+                    <label for="status" class="block text-xs font-medium text-gray-700 uppercase tracking-wide">Status</label>
+                    <select name="status" id="status" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                        <option value="">All Statuses</option>
+                        {% for status_value, status_label in status_choices %}
+                            <option value="{{ status_value }}" {% if current_status == status_value %}selected{% endif %}>
+                                {{ status_label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label for="priority" class="block text-xs font-medium text-gray-700 uppercase tracking-wide">Priority</label>
+                    <select name="priority" id="priority" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                        <option value="">All Priorities</option>
+                        {% for priority_value, priority_label in priority_choices %}
+                            <option value="{{ priority_value }}" {% if current_priority == priority_value %}selected{% endif %}>
+                                {{ priority_label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="flex-1">
+                    <label for="search" class="block text-xs font-medium text-gray-700 uppercase tracking-wide">Search</label>
+                    <input type="text" name="search" id="search" value="{{ search_query|default:'' }}"
+                           placeholder="Search by title, description, or tenant..."
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                </div>
+
+                <div class="flex items-end">
+                    <button type="submit" class="bg-gray-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                        Filter
+                    </button>
+                    <a href="{% url 'maintenance:list' %}" class="ml-2 text-indigo-600 hover:text-indigo-900 text-sm font-medium">
+                        Clear
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Request List -->
+        <div class="divide-y divide-gray-200">
+            {% for request in page_obj %}
+                <div class="px-6 py-4 hover:bg-gray-50">
+                    <div class="flex items-center justify-between">
+                        <div class="flex-1">
+                            <div class="flex items-center space-x-3">
+                                <a href="{% url 'maintenance:detail' request.pk %}" class="text-lg font-medium text-indigo-600 hover:text-indigo-900">
+                                    {{ request.title }}
+                                </a>
+                                
+                                <!-- Priority Badge -->
+                                {% if request.priority == 'EMERGENCY' %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                        Emergency
+                                    </span>
+                                {% elif request.priority == 'HIGH' %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                                        High
+                                    </span>
+                                {% elif request.priority == 'MEDIUM' %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                        Medium
+                                    </span>
+                                {% else %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                        Low
+                                    </span>
+                                {% endif %}
+
+                                <!-- Status Badge -->
+                                {% if request.status == 'COMPLETED' %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                        Completed
+                                    </span>
+                                {% elif request.status == 'IN_PROGRESS' %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                        In Progress
+                                    </span>
+                                {% elif request.status == 'SCHEDULED' %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                        Scheduled
+                                    </span>
+                                {% elif request.status == 'CANCELLED' %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                        Cancelled
+                                    </span>
+                                {% else %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                        Submitted
+                                    </span>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="mt-2 text-sm text-gray-600">
+                                <p class="line-clamp-2">{{ request.description|truncatewords:20 }}</p>
+                                <div class="mt-1 flex flex-wrap items-center text-xs text-gray-500 space-x-4">
+                                    <span>{{ request.category.name }}</span>
+                                    <span>{{ request.property.name }}</span>
+                                    {% if request.apartment_unit %}
+                                        <span>Unit {{ request.apartment_unit.unit_number }}</span>
+                                    {% endif %}
+                                    {% if user.role != 'TENANT' %}
+                                        <span>{{ request.tenant.get_full_name|default:request.tenant.username }}</span>
+                                    {% endif %}
+                                    <span>{{ request.created_at|date:"M d, Y" }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center space-x-4">
+                            {% if request.scheduled_date %}
+                                <div class="text-right">
+                                    <div class="text-sm font-medium text-gray-900">Scheduled</div>
+                                    <div class="text-xs text-gray-500">{{ request.scheduled_date|date:"M d, Y g:i A" }}</div>
+                                </div>
+                            {% endif %}
+                            
+                            {% if request.assigned_to %}
+                                <div class="text-right">
+                                    <div class="text-sm font-medium text-gray-900">Assigned to</div>
+                                    <div class="text-xs text-gray-500">{{ request.assigned_to.get_full_name|default:request.assigned_to.username }}</div>
+                                </div>
+                            {% endif %}
+
+                            <a href="{% url 'maintenance:detail' request.pk %}" 
+                               class="text-indigo-600 hover:text-indigo-900 text-sm font-medium">
+                                View →
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="px-6 py-12 text-center">
+                    <div class="text-gray-500">
+                        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        <h3 class="mt-2 text-sm font-medium text-gray-900">No maintenance requests</h3>
+                        <p class="mt-1 text-sm text-gray-500">
+                            {% if user.role == 'TENANT' %}
+                                Get started by creating your first maintenance request.
+                            {% else %}
+                                No maintenance requests have been submitted yet.
+                            {% endif %}
+                        </p>
+                        {% if user.role == 'TENANT' %}
+                        <div class="mt-6">
+                            <a href="{% url 'maintenance:create' %}" 
+                               class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                Submit Request
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if page_obj.has_other_pages %}
+        <div class="px-6 py-4 border-t border-gray-200">
+            <nav class="flex items-center justify-between">
+                <div class="flex-1 flex justify-between sm:hidden">
+                    {% if page_obj.has_previous %}
+                        <a href="?page={{ page_obj.previous_page_number }}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                            Previous
+                        </a>
+                    {% endif %}
+                    {% if page_obj.has_next %}
+                        <a href="?page={{ page_obj.next_page_number }}" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                            Next
+                        </a>
+                    {% endif %}
+                </div>
+                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm text-gray-700">
+                            Showing {{ page_obj.start_index }} to {{ page_obj.end_index }} of {{ page_obj.paginator.count }} results
+                        </p>
+                    </div>
+                    <div>
+                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                            {% if page_obj.has_previous %}
+                                <a href="?page={{ page_obj.previous_page_number }}" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                    Previous
+                                </a>
+                            {% endif %}
+                            
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                    <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-indigo-50 text-sm font-medium text-indigo-600">
+                                        {{ num }}
+                                    </span>
+                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                    <a href="?page={{ num }}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                        {{ num }}
+                                    </a>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if page_obj.has_next %}
+                                <a href="?page={{ page_obj.next_page_number }}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                    Next
+                                </a>
+                            {% endif %}
+                        </nav>
+                    </div>
+                </div>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Important Rule: DO NOT TRY TO RUN THE DEVELOPMENT SERVER. I AM RUNNING IT IN THE BACKGROUND IN A SEPARATE TERMINAL. WHEN YOU TRY TO RUN IT, I NEED TO MANUALLY KILL ALL PYTHON PROCESSES.
 
-Another Important Rule: Do not try to test newly implemented features. I will test them for you.
+Another Important Rule: Do not try to test newly implemented features. I will test them for you.-+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 ## Development Commands
 
@@ -48,8 +48,8 @@ This is a Django apartment management platform with a multi-app structure design
 - **users/**: Custom user model with role-based permissions and invitation system
 - **properties/**: Company, Property, and ApartmentUnit models for multi-tenancy
 - **communication/**: Messaging and notification system (planned)
-- **documents/**: Document management with role-based access (planned)
-- **maintenance/**: Maintenance request workflow (planned)
+- **documents/**: Document management with role-based access (completed)
+- **maintenance/**: Maintenance request workflow (completed)
 - **financials/**: Rent payment and financial tracking (planned)
 
 ### Key Models and Relationships
@@ -58,6 +58,8 @@ This is a Django apartment management platform with a multi-app structure design
 - **Property** (properties/models.py): Properties owned by companies
 - **ApartmentUnit** (properties/models.py): Individual units within properties
 - **Invitation** (users/models.py): Invitation system for user onboarding
+- **Document** (documents/models.py): Document management with role-based access control
+- **MaintenanceRequest** (maintenance/models.py): Maintenance workflow with status tracking, photos, and cost management
 
 ### Multi-Tenancy Design
 The platform supports multiple management companies through:
@@ -87,7 +89,8 @@ The platform supports multiple management companies through:
 ### Current Development Status
 - **Phase 1, 2 & 3 Complete**: Foundation setup, user management, and core dashboard features
 - **Phase 4 Complete**: Document management system with secure file uploads and role-based access
-- Next phase: Maintenance system (Phase 5)
+- **Phase 5 Complete**: Maintenance system with request workflow, photo uploads, status tracking, and cost management
+- Next phase: Communication features (Phase 6)
 
 ### Important Files to Update
 - **project_context.md**: Update when completing major phases
