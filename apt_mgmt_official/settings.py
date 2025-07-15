@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     "maintenance",
     "communication",
     "documents",
+    "events",
     "financials",
 ]
 

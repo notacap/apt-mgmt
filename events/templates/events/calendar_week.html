@@ -1,0 +1,216 @@
+{% extends 'base.html' %}
+{% load form_tags %}
+
+{% block title %}Calendar - Week View{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Calendar</h1>
+        <div class="flex space-x-2">
+            <a href="{% url 'events:create_event' %}" 
+               class="inline-flex items-center px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors duration-200">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                </svg>
+                New Event
+            </a>
+        </div>
+    </div>
+
+    <!-- Navigation and View Toggle -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 mb-6">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+                <!-- Calendar Navigation -->
+                <div class="flex items-center space-x-4">
+                    <button onclick="navigateWeek(-1)" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                        </svg>
+                    </button>
+                    <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
+                        {{ start_date|date:"M d" }} - {{ end_date|date:"M d, Y" }}
+                    </h2>
+                    <button onclick="navigateWeek(1)" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                    </button>
+                    <a href="{% url 'events:calendar_week' %}" class="px-3 py-1 text-sm bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded">
+                        This Week
+                    </a>
+                </div>
+
+                <!-- View Toggle -->
+                <div class="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+                    <a href="{% url 'events:calendar_month' %}" 
+                       class="px-3 py-2 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
+                        Month
+                    </a>
+                    <a href="{% url 'events:calendar_week' %}" 
+                       class="px-3 py-2 text-sm font-medium rounded-md bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm">
+                        Week
+                    </a>
+                    <a href="{% url 'events:calendar_day' %}" 
+                       class="px-3 py-2 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
+                        Day
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="px-6 py-4">
+            <form method="GET" class="flex flex-wrap items-center gap-4">
+                <input type="hidden" name="date" value="{{ start_date|date:'Y-m-d' }}">
+                <div class="flex items-center space-x-2">
+                    <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Property:</label>
+                    {{ filter_form.property }}
+                </div>
+                <div class="flex items-center space-x-2">
+                    <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Type:</label>
+                    {{ filter_form.event_type }}
+                </div>
+                <div class="flex items-center space-x-2">
+                    {{ filter_form.assigned_to_me }}
+                    <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Assigned to me</label>
+                </div>
+                <div class="flex items-center space-x-2">
+                    {{ filter_form.created_by_me }}
+                    <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Created by me</label>
+                </div>
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
+                    Filter
+                </button>
+                <a href="{% url 'events:calendar_week' %}" class="px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500">
+                    Clear
+                </a>
+            </form>
+        </div>
+    </div>
+
+    <!-- Week View Grid -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+        <div class="grid grid-cols-7 gap-0">
+            {% for day in week_days %}
+            <div class="border-r border-gray-200 dark:border-gray-700 last:border-r-0">
+                <!-- Day Header -->
+                <div class="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
+                    <div class="text-center">
+                        <div class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            {{ day.date|date:"D" }}
+                        </div>
+                        <div class="text-lg font-semibold {% if day.is_today %}text-blue-600 dark:text-blue-400{% else %}text-gray-900 dark:text-white{% endif %}">
+                            {{ day.date|date:"d" }}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Day Events -->
+                <div class="min-h-96 p-2 space-y-1">
+                    {% for event in day.events %}
+                    {% with event_start_date=event.start_datetime|date:"Y-m-d" event_end_date=event.end_datetime|date:"Y-m-d" current_day_date=day.date|date:"Y-m-d" %}
+                    {% if event_start_date == event_end_date or not event.is_all_day %}
+                        <!-- Single day or timed event -->
+                        <div class="p-2 rounded-lg cursor-pointer hover:opacity-80 transition-opacity" 
+                             style="background-color: {% if event.event_type == 'MAINTENANCE' %}#f59e0b{% elif event.event_type == 'MEETING' %}#3b82f6{% elif event.event_type == 'INSPECTION' %}#8b5cf6{% elif event.event_type == 'WORK_SCHEDULE' %}#10b981{% elif event.event_type == 'LEASE_SIGNING' %}#ef4444{% elif event.event_type == 'PROPERTY_SHOWING' %}#06b6d4{% else %}#6b7280{% endif %}; color: white;"
+                             onclick="window.location.href='{% url 'events:event_detail' event.id %}'">
+                            <div class="text-xs font-medium truncate">{{ event.title }}</div>
+                            <div class="text-xs opacity-90">
+                                {% if not event.is_all_day %}
+                                    {{ event.start_datetime|date:"g:i A" }}
+                                {% else %}
+                                    All day
+                                {% endif %}
+                            </div>
+                            {% if event.location_details %}
+                            <div class="text-xs opacity-80 truncate">{{ event.location_details }}</div>
+                            {% endif %}
+                        </div>
+                    {% else %}
+                        <!-- Multi-day event -->
+                        {% if current_day_date == event_start_date %}
+                            <!-- First day of multi-day event -->
+                            <div class="p-2 rounded-l-lg cursor-pointer hover:opacity-80 transition-opacity border-r-0" 
+                                 style="background-color: {% if event.event_type == 'MAINTENANCE' %}#f59e0b{% elif event.event_type == 'MEETING' %}#3b82f6{% elif event.event_type == 'INSPECTION' %}#8b5cf6{% elif event.event_type == 'WORK_SCHEDULE' %}#10b981{% elif event.event_type == 'LEASE_SIGNING' %}#ef4444{% elif event.event_type == 'PROPERTY_SHOWING' %}#06b6d4{% else %}#6b7280{% endif %}; color: white;"
+                                 onclick="window.location.href='{% url 'events:event_detail' event.id %}'">
+                                <div class="text-xs font-medium truncate">{{ event.title }}</div>
+                                <div class="text-xs opacity-90">All day ({{ event.start_datetime|date:"M d" }} - {{ event.end_datetime|date:"M d" }})</div>
+                            </div>
+                        {% elif current_day_date == event_end_date %}
+                            <!-- Last day of multi-day event -->
+                            <div class="p-2 rounded-r-lg cursor-pointer hover:opacity-80 transition-opacity border-l-0" 
+                                 style="background-color: {% if event.event_type == 'MAINTENANCE' %}#f59e0b{% elif event.event_type == 'MEETING' %}#3b82f6{% elif event.event_type == 'INSPECTION' %}#8b5cf6{% elif event.event_type == 'WORK_SCHEDULE' %}#10b981{% elif event.event_type == 'LEASE_SIGNING' %}#ef4444{% elif event.event_type == 'PROPERTY_SHOWING' %}#06b6d4{% else %}#6b7280{% endif %}; color: white; opacity: 0.7;"
+                                 onclick="window.location.href='{% url 'events:event_detail' event.id %}'">
+                                <div class="text-xs font-medium">&nbsp;</div>
+                                <div class="text-xs opacity-90">&nbsp;</div>
+                            </div>
+                        {% else %}
+                            <!-- Middle day of multi-day event -->
+                            <div class="p-2 cursor-pointer hover:opacity-80 transition-opacity border-l-0 border-r-0" 
+                                 style="background-color: {% if event.event_type == 'MAINTENANCE' %}#f59e0b{% elif event.event_type == 'MEETING' %}#3b82f6{% elif event.event_type == 'INSPECTION' %}#8b5cf6{% elif event.event_type == 'WORK_SCHEDULE' %}#10b981{% elif event.event_type == 'LEASE_SIGNING' %}#ef4444{% elif event.event_type == 'PROPERTY_SHOWING' %}#06b6d4{% else %}#6b7280{% endif %}; color: white; opacity: 0.7;"
+                                 onclick="window.location.href='{% url 'events:event_detail' event.id %}'">
+                                <div class="text-xs font-medium">&nbsp;</div>
+                                <div class="text-xs opacity-90">&nbsp;</div>
+                            </div>
+                        {% endif %}
+                    {% endif %}
+                    {% endwith %}
+                    {% empty %}
+                    <div class="text-center text-gray-400 dark:text-gray-600 text-sm py-8">
+                        No events
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="mt-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">Event Types</h3>
+        <div class="flex flex-wrap gap-4">
+            <div class="flex items-center space-x-2">
+                <div class="w-4 h-4 bg-amber-500 rounded"></div>
+                <span class="text-sm text-gray-700 dark:text-gray-300">Maintenance</span>
+            </div>
+            <div class="flex items-center space-x-2">
+                <div class="w-4 h-4 bg-blue-500 rounded"></div>
+                <span class="text-sm text-gray-700 dark:text-gray-300">Meeting</span>
+            </div>
+            <div class="flex items-center space-x-2">
+                <div class="w-4 h-4 bg-purple-500 rounded"></div>
+                <span class="text-sm text-gray-700 dark:text-gray-300">Inspection</span>
+            </div>
+            <div class="flex items-center space-x-2">
+                <div class="w-4 h-4 bg-emerald-500 rounded"></div>
+                <span class="text-sm text-gray-700 dark:text-gray-300">Work Schedule</span>
+            </div>
+            <div class="flex items-center space-x-2">
+                <div class="w-4 h-4 bg-red-500 rounded"></div>
+                <span class="text-sm text-gray-700 dark:text-gray-300">Lease Signing</span>
+            </div>
+            <div class="flex items-center space-x-2">
+                <div class="w-4 h-4 bg-cyan-500 rounded"></div>
+                <span class="text-sm text-gray-700 dark:text-gray-300">Property Showing</span>
+            </div>
+            <div class="flex items-center space-x-2">
+                <div class="w-4 h-4 bg-gray-500 rounded"></div>
+                <span class="text-sm text-gray-700 dark:text-gray-300">General</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function navigateWeek(direction) {
+    const currentStart = new Date('{{ start_date|date:"Y-m-d" }}');
+    currentStart.setDate(currentStart.getDate() + (direction * 7));
+    const newDate = currentStart.toISOString().split('T')[0];
+    window.location.href = `?date=${newDate}`;
+}
+</script>
+{% endblock %}

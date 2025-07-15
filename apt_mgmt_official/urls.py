@@ -25,6 +25,7 @@ urlpatterns = [
     path("documents/", include("documents.urls", namespace="documents")),
     path("maintenance/", include("maintenance.urls", namespace="maintenance")),
     path("messages/", include("communication.urls", namespace="communication")),
+    path("calendar/", include("events.urls", namespace="events")),
 ]
 
 print("DEBUG: Main URLs loaded")
