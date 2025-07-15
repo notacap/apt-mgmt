@@ -1,0 +1,156 @@
+{% extends 'base.html' %}
+
+{% block title %}Create Community Post{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Header -->
+    <div class="flex items-center gap-4 mb-6">
+        <a href="{% url 'communication:community_board' %}" 
+           class="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition duration-200">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            </svg>
+        </a>
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Create Community Post</h1>
+            {% if property %}
+                <p class="text-gray-600 dark:text-gray-400 mt-1">
+                    {% if is_landlord %}Posting to: {% endif %}{{ property.name }}
+                </p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+        <form method="post" enctype="multipart/form-data" class="p-6" x-data="{ postType: 'GENERAL' }">
+            {% csrf_token %}
+            
+            <!-- Property Selection (for landlords) -->
+            {% if is_landlord and available_properties|length > 1 %}
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Property *
+                    </label>
+                    <select name="property_id" 
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                            onchange="updatePropertySelection(this.value)">
+                        {% for prop in available_properties %}
+                            <option value="{{ prop.id }}" {% if prop.id == property.id %}selected{% endif %}>
+                                {{ prop.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            {% elif property %}
+                <input type="hidden" name="property_id" value="{{ property.id }}">
+            {% endif %}
+            
+            <!-- Title Field -->
+            <div class="mb-6">
+                <label for="{{ form.title.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Title *
+                </label>
+                {{ form.title }}
+                {% if form.title.errors %}
+                    <div class="mt-1 text-sm text-red-600 dark:text-red-400">
+                        {{ form.title.errors.0 }}
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Post Type Field -->
+            <div class="mb-6">
+                <label for="{{ form.post_type.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Post Type *
+                </label>
+                <select name="{{ form.post_type.name }}" 
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                        x-model="postType">
+                    {% for value, label in form.post_type.field.choices %}
+                        <option value="{{ value }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+                {% if form.post_type.errors %}
+                    <div class="mt-1 text-sm text-red-600 dark:text-red-400">
+                        {{ form.post_type.errors.0 }}
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Content Field -->
+            <div class="mb-6">
+                <label for="{{ form.content.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Content *
+                </label>
+                {{ form.content }}
+                {% if form.content.errors %}
+                    <div class="mt-1 text-sm text-red-600 dark:text-red-400">
+                        {{ form.content.errors.0 }}
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Event Fields (shown only for EVENT post type) -->
+            <div x-show="postType === 'EVENT'" x-transition class="space-y-6 mb-6">
+                <div>
+                    <label for="{{ form.event_date.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Event Date & Time
+                    </label>
+                    {{ form.event_date }}
+                    {% if form.event_date.errors %}
+                        <div class="mt-1 text-sm text-red-600 dark:text-red-400">
+                            {{ form.event_date.errors.0 }}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label for="{{ form.event_location.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Event Location
+                    </label>
+                    {{ form.event_location }}
+                    {% if form.event_location.errors %}
+                        <div class="mt-1 text-sm text-red-600 dark:text-red-400">
+                            {{ form.event_location.errors.0 }}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- File Attachments -->
+            <div class="mb-6">
+                <label for="{{ form.attachments.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Attachments
+                </label>
+                <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6">
+                    {{ form.attachments }}
+                    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                        {{ form.attachments.help_text }}
+                    </p>
+                </div>
+                {% if form.attachments.errors %}
+                    <div class="mt-1 text-sm text-red-600 dark:text-red-400">
+                        {{ form.attachments.errors.0 }}
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <a href="{% url 'communication:community_board' %}" 
+                   class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-200">
+                    Cancel
+                </a>
+                <button type="submit" 
+                        class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-200">
+                    <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                    </svg>
+                    Create Post
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,5 +1,8 @@
 from django.contrib import admin
-from .models import Notification, MessageThread, Message, MessageAttachment, MessageReadStatus
+from .models import (
+    Notification, MessageThread, Message, MessageAttachment, MessageReadStatus,
+    CommunityPost, CommunityPostAttachment
+)
 
 @admin.register(Notification)
 class NotificationAdmin(admin.ModelAdmin):
@@ -38,3 +41,20 @@ class MessageReadStatusAdmin(admin.ModelAdmin):
     list_display = ('user', 'message', 'read_at')
     list_filter = ('read_at',)
     search_fields = ('user__username', 'user__email')
+
+@admin.register(CommunityPost)
+class CommunityPostAdmin(admin.ModelAdmin):
+    list_display = ('title', 'author', 'property', 'post_type', 'status', 'is_pinned', 'created_at')
+    list_filter = ('post_type', 'status', 'is_pinned', 'created_at', 'property')
+    search_fields = ('title', 'content', 'author__username', 'author__email')
+    readonly_fields = ('created_at', 'updated_at')
+    
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('author', 'property')
+
+@admin.register(CommunityPostAttachment)
+class CommunityPostAttachmentAdmin(admin.ModelAdmin):
+    list_display = ('filename', 'post', 'file_size', 'uploaded_at')
+    list_filter = ('uploaded_at', 'content_type')
+    search_fields = ('filename',)
+    readonly_fields = ('uploaded_at',)

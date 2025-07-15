@@ -88,8 +88,20 @@ We have completed **Phase 5: Maintenance System** with comprehensive enhancement
 - **Comprehensive search and filtering**: Advanced list management with status, priority, and search capabilities
 - **Scheduling functionality**: Date/time scheduling for maintenance appointments with assignment tracking
 
-We are now ready to begin **Phase 6: Communication Features**.
+We have completed **Phase 6: Communication Features**. Key accomplishments include:
 
-The immediate next tasks are:
-- **Build direct messaging system**: Enable communication between tenants, employees, and landlords
-- **Implement message recipient selection**: Role-based messaging with proper permission controls 
+**Direct Messaging System:**
+- **Built robust messaging models**: Created `MessageThread`, `Message`, `MessageAttachment`, and `MessageReadStatus` models to support threaded conversations.
+- **Implemented role-based recipient selection**: Developed a dynamic form that populates the recipient list based on the sender's role, ensuring users can only message appropriate contacts (e.g., tenants can message their property's landlord and employees).
+- **Created full-featured messaging UI**: Built templates for listing message threads, viewing individual threads, and composing new messages.
+- **Enabled file attachments**: Users can attach multiple files to messages, which are securely stored and linked to the relevant message.
+- **Added message notifications**: Integrated with the existing notification system to alert users to new messages.
+
+**Community Board:**
+- **Developed community post models**: Created `CommunityPost` and `CommunityPostAttachment` models for property-specific announcements and events.
+- **Implemented role-based posting and moderation**: Landlords, employees, and tenants can create posts. Landlords and employees have moderation rights (hiding/deleting posts) within their assigned properties.
+- **Built community board UI**: Created a central view for all community posts with filtering by property, plus forms for creating and editing posts.
+- **Added support for event posts**: Included special fields for event dates and locations, which are displayed prominently on event-type posts.
+- **Enabled file and image attachments for posts**: Users can attach multiple files and images to enrich their community posts.
+
+We are now ready to begin **Phase 7: Calendar System**. 

@@ -47,7 +47,7 @@ This is a Django apartment management platform with a multi-app structure design
 - **core/**: Central app handling authentication, dashboards, and main views
 - **users/**: Custom user model with role-based permissions and invitation system
 - **properties/**: Company, Property, and ApartmentUnit models for multi-tenancy
-- **communication/**: Messaging and notification system (planned)
+- **communication/**: Messaging, notifications, and community board system (completed)
 - **documents/**: Document management with role-based access (completed)
 - **maintenance/**: Comprehensive maintenance request workflow with invoice management (completed)
 - **financials/**: Rent payment and financial tracking (planned)
@@ -61,6 +61,9 @@ This is a Django apartment management platform with a multi-app structure design
 - **Document** (documents/models.py): Document management with role-based access control
 - **MaintenanceRequest** (maintenance/models.py): Complete maintenance workflow with status tracking, photos, and invoice-based cost management
 - **MaintenanceInvoice** (maintenance/models.py): Invoice management with documents integration for financial tracking
+- **MessageThread** (communication/models.py): Direct messaging system with thread-based conversations
+- **Message** (communication/models.py): Individual messages with file attachments and read status tracking
+- **CommunityPost** (communication/models.py): Property-specific community board with posts, events, and moderation
 
 ### Multi-Tenancy Design
 The platform supports multiple management companies through:
@@ -96,7 +99,14 @@ The platform supports multiple management companies through:
   - Enhanced UI/UX with improved forms, layouts, and navigation
   - Strict role-based access control preventing tenant access to financial information
   - Photo download functionality and improved filter controls
-- **Ready for Phase 6**: Communication features (messaging system)
+- **Phase 6 Complete**: Communication features including:
+  - Direct messaging system with threaded conversations and file attachments
+  - Role-based recipient selection (tenants ↔ employees/landlords)
+  - Property-specific community board with posts, events, and announcements
+  - Author-only editing with role-based moderation capabilities
+  - Inline image display and downloadable file attachments
+  - Integrated notification system for new messages
+- **Ready for Phase 7**: Calendar system
 
 ### Important Files to Update
 - **project_context.md**: Update when completing major phases
@@ -109,5 +119,7 @@ The platform supports multiple management companies through:
 - Invitation tokens for secure user onboarding
 - **Enhanced document access control**: Fixed vulnerability where role restrictions could be bypassed by property-level access
 - **Strict financial data protection**: Maintenance invoices and cost information completely hidden from tenants
-- **Secure file handling**: UUID-based filenames for uploaded documents and photos
+- **Secure file handling**: UUID-based filenames for uploaded documents, photos, and message attachments
+- **Role-based messaging permissions**: Property-specific communication controls with proper user isolation
+- **Content moderation system**: Author-only editing with landlord/employee moderation capabilities
 - DEBUG=True in development (change for production)

@@ -5,8 +5,8 @@ from django.http import JsonResponse, HttpResponseForbidden
 from django.db.models import Q, Max, Count
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth import get_user_model
-from .models import MessageThread, Message, MessageAttachment, MessageReadStatus, Notification
-from .forms import MessageForm, NewThreadForm
+from .models import MessageThread, Message, MessageAttachment, MessageReadStatus, Notification, CommunityPost, CommunityPostAttachment
+from .forms import MessageForm, NewThreadForm, CommunityPostForm
 import json
 
 User = get_user_model()
@@ -165,14 +165,13 @@ def get_recipients(request):
     if user.role == User.Role.TENANT:
         # Tenants can message landlords and employees of their property
         if user.property:
-            # Get landlords and employees from the same company
             recipients = User.objects.filter(
                 Q(role=User.Role.LANDLORD, company=user.company) |
                 Q(role=User.Role.EMPLOYEE, property=user.property)
             ).exclude(id=user.id)
     
     elif user.role == User.Role.EMPLOYEE:
-        # Employees can message landlords from their company and tenants from their property
+        # Employees can message landlords, tenants, and other employees from their property
         recipients_query = Q()
         
         if user.company:
@@ -209,3 +208,230 @@ def get_recipients(request):
     ]
     
     return JsonResponse({'recipients': recipients_data})
+
+
+@login_required
+def community_board(request):
+    """Display community board posts for user's property"""
+    user = request.user
+    
+    # Determine which posts to show based on user role
+    if user.role == User.Role.TENANT and user.property:
+        # Tenants see posts for their property
+        posts = CommunityPost.objects.filter(
+            property=user.property,
+            status=CommunityPost.PostStatus.ACTIVE
+        ).select_related('author', 'property').prefetch_related('attachments')
+        property_filter = user.property
+    elif user.role == User.Role.EMPLOYEE and user.property:
+        # Employees see posts for their assigned property
+        posts = CommunityPost.objects.filter(
+            property=user.property,
+            status=CommunityPost.PostStatus.ACTIVE
+        ).select_related('author', 'property').prefetch_related('attachments')
+        property_filter = user.property
+    elif user.role == User.Role.LANDLORD and user.company:
+        # Landlords see posts from all properties in their company
+        posts = CommunityPost.objects.filter(
+            property__company=user.company,
+            status=CommunityPost.PostStatus.ACTIVE
+        ).select_related('author', 'property').prefetch_related('attachments')
+        property_filter = None  # Multiple properties
+    else:
+        posts = CommunityPost.objects.none()
+        property_filter = None
+    
+    # Add permission checks for each post
+    for post in posts:
+        post.user_can_edit = post.can_be_edited_by(user)
+        post.user_can_moderate = post.can_be_moderated_by(user)
+    
+    # Check posting permissions
+    can_post = False
+    if user.role in [User.Role.LANDLORD, User.Role.EMPLOYEE, User.Role.TENANT]:
+        can_post = True
+    
+    context = {
+        'posts': posts,
+        'can_post': can_post,
+        'property': property_filter,
+    }
+    return render(request, 'communication/community_board.html', context)
+
+
+@login_required
+def create_community_post(request):
+    """Create a new community board post"""
+    user = request.user
+    
+    # Check permissions - landlords, employees, and tenants can post
+    if user.role not in [User.Role.LANDLORD, User.Role.EMPLOYEE, User.Role.TENANT]:
+        django_messages.error(request, 'You do not have permission to create posts.')
+        return redirect('communication:community_board')
+    
+    # Determine the property for the post
+    if user.role == User.Role.TENANT and user.property:
+        post_property = user.property
+        available_properties = [user.property]
+    elif user.role == User.Role.EMPLOYEE and user.property:
+        post_property = user.property
+        available_properties = [user.property]
+    elif user.role == User.Role.LANDLORD and user.company:
+        # Landlords can post to any property in their company
+        from properties.models import Property
+        available_properties = Property.objects.filter(company=user.company)
+        
+        # If landlord has a specific property assigned, use that as default
+        post_property = user.property if user.property else available_properties.first()
+        
+        # If property is specified in the request, use that
+        if request.method == 'GET' and 'property' in request.GET:
+            try:
+                selected_property_id = request.GET['property']
+                post_property = available_properties.get(id=selected_property_id)
+            except Property.DoesNotExist:
+                pass
+    else:
+        django_messages.error(request, 'You must be assigned to a company/property to create posts.')
+        return redirect('communication:community_board')
+    
+    if not post_property:
+        django_messages.error(request, 'No property available for posting.')
+        return redirect('communication:community_board')
+    
+    if request.method == 'POST':
+        # Handle property selection for landlords
+        if user.role == User.Role.LANDLORD and 'property_id' in request.POST:
+            try:
+                selected_property_id = request.POST['property_id']
+                post_property = available_properties.get(id=selected_property_id)
+            except Property.DoesNotExist:
+                django_messages.error(request, 'Invalid property selected.')
+                return redirect('communication:create_community_post')
+        
+        form = CommunityPostForm(request.POST, request.FILES)
+        if form.is_valid():
+            post = form.save(commit=False)
+            post.author = user
+            post.property = post_property
+            post.save()
+            
+            # Handle file attachments
+            files = request.FILES.getlist('attachments')
+            for file in files:
+                CommunityPostAttachment.objects.create(
+                    post=post,
+                    file=file,
+                    filename=file.name,
+                    file_size=file.size,
+                    content_type=file.content_type
+                )
+            
+            django_messages.success(request, 'Community post created successfully.')
+            return redirect('communication:community_board')
+    else:
+        form = CommunityPostForm()
+    
+    context = {
+        'form': form,
+        'property': post_property,
+        'available_properties': available_properties,
+        'is_landlord': user.role == User.Role.LANDLORD,
+    }
+    return render(request, 'communication/create_post.html', context)
+
+
+@login_required
+def community_post_detail(request, post_id):
+    """View detailed community post"""
+    user = request.user
+    
+    # Get the post and check if user can view it
+    post = get_object_or_404(CommunityPost, id=post_id, status=CommunityPost.PostStatus.ACTIVE)
+    
+    # Check if user can view posts for this property
+    can_view = False
+    if user.role == User.Role.TENANT and user.property == post.property:
+        can_view = True
+    elif user.role == User.Role.EMPLOYEE and user.property == post.property:
+        can_view = True
+    elif user.role == User.Role.LANDLORD and user.company == post.property.company:
+        can_view = True
+    elif user.role == User.Role.SUPERUSER:
+        can_view = True
+    
+    if not can_view:
+        return HttpResponseForbidden("You don't have permission to view this post.")
+    
+    # Check if user can edit/moderate this post
+    can_edit = post.can_be_edited_by(user)
+    can_moderate = post.can_be_moderated_by(user)
+    
+    context = {
+        'post': post,
+        'can_edit': can_edit,
+        'can_moderate': can_moderate,
+    }
+    return render(request, 'communication/post_detail.html', context)
+
+
+@login_required
+def edit_community_post(request, post_id):
+    """Edit a community board post"""
+    user = request.user
+    post = get_object_or_404(CommunityPost, id=post_id)
+    
+    # Check permissions
+    if not post.can_be_edited_by(user):
+        django_messages.error(request, 'You do not have permission to edit this post.')
+        return redirect('communication:community_post_detail', post_id=post.id)
+    
+    if request.method == 'POST':
+        form = CommunityPostForm(request.POST, request.FILES, instance=post)
+        if form.is_valid():
+            form.save()
+            
+            # Handle new file attachments
+            files = request.FILES.getlist('attachments')
+            for file in files:
+                CommunityPostAttachment.objects.create(
+                    post=post,
+                    file=file,
+                    filename=file.name,
+                    file_size=file.size,
+                    content_type=file.content_type
+                )
+            
+            django_messages.success(request, 'Post updated successfully.')
+            return redirect('communication:community_post_detail', post_id=post.id)
+    else:
+        form = CommunityPostForm(instance=post)
+    
+    context = {
+        'form': form,
+        'post': post,
+    }
+    return render(request, 'communication/edit_post.html', context)
+
+
+@login_required
+def delete_community_post(request, post_id):
+    """Delete/hide a community board post"""
+    user = request.user
+    post = get_object_or_404(CommunityPost, id=post_id)
+    
+    # Check permissions
+    if not post.can_be_moderated_by(user):
+        django_messages.error(request, 'You do not have permission to delete this post.')
+        return redirect('communication:community_post_detail', post_id=post.id)
+    
+    if request.method == 'POST':
+        post.status = CommunityPost.PostStatus.HIDDEN
+        post.save()
+        django_messages.success(request, 'Post has been hidden.')
+        return redirect('communication:community_board')
+    
+    context = {
+        'post': post,
+    }
+    return render(request, 'communication/delete_post.html', context)

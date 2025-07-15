@@ -48,12 +48,12 @@
 
 ## Phase 6: Communication Features
 
-- [ ] Build direct messaging system
-- [ ] Implement message recipient selection based on roles
-- [ ] Add document attachment to messages
-- [ ] Create community board with posting capabilities
-- [ ] Implement role-based moderation features
-- [ ] Add message notifications
+- [x] Build direct messaging system
+- [x] Implement message recipient selection based on roles
+- [x] Add document attachment to messages
+- [x] Create community board with posting capabilities
+- [x] Implement role-based moderation features
+- [x] Add message notifications
 
 ## Phase 7: Calendar System
 
