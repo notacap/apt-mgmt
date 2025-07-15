@@ -10,7 +10,7 @@ class CalendarEventForm(forms.ModelForm):
     class Meta:
         model = CalendarEvent
         fields = [
-            'title', 'description', 'event_type', 'priority',
+            'title', 'description', 'event_type',
             'start_datetime', 'end_datetime', 'is_all_day',
             'property', 'apartment_unit', 'location_details',
             'assigned_to', 'maintenance_request', 'is_private'
@@ -143,11 +143,6 @@ class EventFilterForm(forms.Form):
     )
     event_type = forms.ChoiceField(
         choices=EVENT_TYPE_CHOICES,
-        required=False,
-        widget=forms.Select(attrs={'class': 'form-select'})
-    )
-    priority = forms.ChoiceField(
-        choices=PRIORITY_CHOICES,
         required=False,
         widget=forms.Select(attrs={'class': 'form-select'})
     )

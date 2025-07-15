@@ -186,9 +186,6 @@ def apply_event_filters(events, filters, user):
     if filters.get('event_type'):
         events = events.filter(event_type=filters['event_type'])
     
-    if filters.get('priority'):
-        events = events.filter(priority=filters['priority'])
-    
     if filters.get('assigned_to_me'):
         events = events.filter(assigned_to=user)
     
@@ -200,6 +197,10 @@ def apply_event_filters(events, filters, user):
 @login_required
 def create_event(request):
     """Create a new calendar event"""
+    # Prevent tenants from creating events
+    if request.user.role == User.Role.TENANT:
+        return HttpResponseForbidden("Tenants are not allowed to create events.")
+    
     if request.method == 'POST':
         form = CalendarEventForm(request.POST, user=request.user)
         if form.is_valid():

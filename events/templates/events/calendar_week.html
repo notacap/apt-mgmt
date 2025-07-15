@@ -9,6 +9,7 @@
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Calendar</h1>
         <div class="flex space-x-2">
+            {% if user.role != 'TENANT' %}
             <a href="{% url 'events:create_event' %}" 
                class="inline-flex items-center px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors duration-200">
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -16,6 +17,7 @@
                 </svg>
                 New Event
             </a>
+            {% endif %}
         </div>
     </div>
 
@@ -77,10 +79,12 @@
                     {{ filter_form.assigned_to_me }}
                     <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Assigned to me</label>
                 </div>
+                {% if user.role != 'TENANT' %}
                 <div class="flex items-center space-x-2">
                     {{ filter_form.created_by_me }}
                     <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Created by me</label>
                 </div>
+                {% endif %}
                 <button type="submit" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
                     Filter
                 </button>
@@ -177,14 +181,17 @@
                 <div class="w-4 h-4 bg-amber-500 rounded"></div>
                 <span class="text-sm text-gray-700 dark:text-gray-300">Maintenance</span>
             </div>
+            {% if user.role != 'TENANT' %}
             <div class="flex items-center space-x-2">
                 <div class="w-4 h-4 bg-blue-500 rounded"></div>
                 <span class="text-sm text-gray-700 dark:text-gray-300">Meeting</span>
             </div>
+            {% endif %}
             <div class="flex items-center space-x-2">
                 <div class="w-4 h-4 bg-purple-500 rounded"></div>
                 <span class="text-sm text-gray-700 dark:text-gray-300">Inspection</span>
             </div>
+            {% if user.role != 'TENANT' %}
             <div class="flex items-center space-x-2">
                 <div class="w-4 h-4 bg-emerald-500 rounded"></div>
                 <span class="text-sm text-gray-700 dark:text-gray-300">Work Schedule</span>
@@ -193,6 +200,7 @@
                 <div class="w-4 h-4 bg-red-500 rounded"></div>
                 <span class="text-sm text-gray-700 dark:text-gray-300">Lease Signing</span>
             </div>
+            {% endif %}
             <div class="flex items-center space-x-2">
                 <div class="w-4 h-4 bg-cyan-500 rounded"></div>
                 <span class="text-sm text-gray-700 dark:text-gray-300">Property Showing</span>
