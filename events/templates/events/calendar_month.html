@@ -91,7 +91,7 @@
     </div>
 
     <!-- Calendar Grid -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700" id="calendar-container">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 relative" id="calendar-container">
         
         <div class="grid grid-cols-7 gap-0 border-b border-gray-200 dark:border-gray-700">
             <!-- Day Headers -->
@@ -105,8 +105,13 @@
         </div>
         
         <!-- Calendar Days -->
-        <div class="grid grid-cols-7 gap-0" id="calendar-days">
+        <div class="grid grid-cols-7 gap-0 relative" id="calendar-days">
             <!-- Days will be populated by JavaScript -->
+        </div>
+        
+        <!-- Multi-day Events Overlay -->
+        <div class="absolute inset-0 pointer-events-none" id="multi-day-events-overlay" style="top: 57px;">
+            <!-- Multi-day events will be positioned here -->
         </div>
     </div>
 
@@ -149,6 +154,7 @@
 <script>
 let currentDate = new Date('{{ today|date:"Y-m-d" }}');
 let events = [];
+let calendarStartDate;
 
 // Initialize calendar
 document.addEventListener('DOMContentLoaded', function() {
@@ -180,23 +186,29 @@ function renderCalendar() {
     // Calculate first day of month and number of days
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
-    const startDate = new Date(firstDay);
-    startDate.setDate(startDate.getDate() - firstDay.getDay()); // Start from Sunday
+    calendarStartDate = new Date(firstDay);
+    calendarStartDate.setDate(calendarStartDate.getDate() - firstDay.getDay()); // Start from Sunday
+    
+    // First, analyze multi-day events to determine space requirements
+    const multiDayEventRows = calculateMultiDayEventRows();
     
     const calendarDays = document.getElementById('calendar-days');
     calendarDays.innerHTML = '';
     
     // Generate 6 weeks (42 days)
     for (let i = 0; i < 42; i++) {
-        const day = new Date(startDate);
-        day.setDate(startDate.getDate() + i);
+        const day = new Date(calendarStartDate);
+        day.setDate(calendarStartDate.getDate() + i);
         
-        const dayElement = createDayElement(day, month);
+        const dayElement = createDayElement(day, month, i, multiDayEventRows);
         calendarDays.appendChild(dayElement);
     }
+    
+    // Render multi-day events after the calendar is built
+    setTimeout(() => renderMultiDayEvents(multiDayEventRows), 100);
 }
 
-function createDayElement(date, currentMonth) {
+function createDayElement(date, currentMonth, dayIndex, multiDayEventRows) {
     const dayDiv = document.createElement('div');
     const isCurrentMonth = date.getMonth() === currentMonth;
     const isToday = date.toDateString() === new Date().toDateString();
@@ -205,88 +217,210 @@ function createDayElement(date, currentMonth) {
         isCurrentMonth ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-900'
     } ${isToday ? 'bg-blue-50 dark:bg-blue-900' : ''}`;
     
+    dayDiv.dataset.dayIndex = dayIndex;
+    dayDiv.dataset.date = date.toISOString().split('T')[0];
+    
     // Day number
     const dayNumber = document.createElement('div');
-    dayNumber.className = `text-sm font-medium ${
+    dayNumber.className = `text-sm font-medium mb-1 ${
         isCurrentMonth ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-600'
     } ${isToday ? 'text-blue-600 dark:text-blue-400' : ''}`;
     dayNumber.textContent = date.getDate();
     dayDiv.appendChild(dayNumber);
     
-    // Events for this day (including multi-day events)
-    const dayEvents = events.filter(event => {
-        const eventStart = new Date(event.start);
-        const eventEnd = new Date(event.end);
-        const currentDate = new Date(date);
-        
-        // Use date strings for comparison to avoid timezone issues
-        const eventStartStr = event.start.split('T')[0]; // Get YYYY-MM-DD part
-        const eventEndStr = event.end.split('T')[0];     // Get YYYY-MM-DD part
-        const currentDateStr = currentDate.toISOString().split('T')[0]; // Get YYYY-MM-DD part
-        
-        // Check if current date falls within event duration using string comparison
-        return currentDateStr >= eventStartStr && currentDateStr <= eventEndStr;
-    });
+    // Calculate how many multi-day events occupy this day
+    const multiDayEventCount = countMultiDayEventsForDay(dayIndex, multiDayEventRows);
+    const topPadding = multiDayEventCount * 22; // 20px height + 2px margin per event
     
-    dayEvents.forEach(event => {
-        // Use string comparison for consistency
+    // Create container for single-day events with appropriate top spacing
+    const singleEventsContainer = document.createElement('div');
+    singleEventsContainer.style.marginTop = `${topPadding}px`;
+    dayDiv.appendChild(singleEventsContainer);
+    
+    // Only render single-day events in day cells
+    const singleDayEvents = events.filter(event => {
         const eventStartStr = event.start.split('T')[0];
         const eventEndStr = event.end.split('T')[0];
-        const currentDateStr = new Date(date).toISOString().split('T')[0];
+        const currentDateStr = date.toISOString().split('T')[0];
         
-        const isFirstDay = currentDateStr === eventStartStr;
-        const isLastDay = currentDateStr === eventEndStr;
-        const isMultiDay = eventEndStr > eventStartStr;
-        
+        // Single day event that occurs on this date
+        return currentDateStr === eventStartStr && eventStartStr === eventEndStr;
+    });
+    
+    singleDayEvents.forEach(event => {
         const eventDiv = document.createElement('div');
+        eventDiv.className = 'mt-1 px-2 py-1 text-xs rounded truncate cursor-pointer hover:opacity-80';
         
-        // Different styling for multi-day events        
-        if (isMultiDay) {
-            // Multi-day event styling
-            let classes = 'mt-1 px-2 py-1 text-xs cursor-pointer hover:opacity-80 relative';
-            
-            if (isFirstDay) {
-                classes += ' rounded-l';
-                if (event.allDay) {
-                    eventDiv.textContent = event.title;
-                } else {
-                    eventDiv.textContent = `${event.title} (${new Date(event.start).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})})`;
-                }
-            } else if (isLastDay) {
-                classes += ' rounded-r';
-                if (event.allDay) {
-                    eventDiv.textContent = ''; // Empty on last day for all-day events
-                } else {
-                    eventDiv.textContent = `(ends ${new Date(event.end).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})})`;
-                }
-            } else {
-                classes += ''; // No border radius for middle days
-                eventDiv.textContent = ''; // Empty on middle days
-            }
-            
-            eventDiv.className = classes;
-            
-            // Add opacity to continuation days
-            if (!isFirstDay) {
-                eventDiv.style.opacity = '0.7';
-            }
+        if (event.allDay) {
+            eventDiv.textContent = event.title;
         } else {
-            // Single day event styling
-            eventDiv.className = 'mt-1 px-2 py-1 text-xs rounded truncate cursor-pointer hover:opacity-80';
-            if (event.allDay) {
-                eventDiv.textContent = event.title;
-            } else {
-                eventDiv.textContent = `${event.title} (${new Date(event.start).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})})`;
-            }
+            eventDiv.textContent = `${event.title} (${new Date(event.start).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})})`;
         }
         
         eventDiv.style.backgroundColor = event.backgroundColor;
         eventDiv.style.color = 'white';
+        eventDiv.style.pointerEvents = 'auto';
         eventDiv.onclick = () => window.location.href = event.url;
-        dayDiv.appendChild(eventDiv);
+        singleEventsContainer.appendChild(eventDiv);
     });
     
     return dayDiv;
+}
+
+function calculateMultiDayEventRows() {
+    // Get all multi-day events
+    const multiDayEvents = events.filter(event => {
+        const eventStartStr = event.start.split('T')[0];
+        const eventEndStr = event.end.split('T')[0];
+        return eventEndStr > eventStartStr;
+    });
+    
+    // Group events by week row to handle overlapping
+    const eventRows = [];
+    
+    multiDayEvents.forEach(event => {
+        const eventStartStr = event.start.split('T')[0];
+        const eventEndStr = event.end.split('T')[0];
+        
+        // Find which days this event spans
+        const startDayIndex = getDayIndex(eventStartStr);
+        const endDayIndex = getDayIndex(eventEndStr);
+        
+        if (startDayIndex === -1 || endDayIndex === -1) return;
+        
+        // Find available row for this event
+        let assignedRow = -1;
+        for (let rowIndex = 0; rowIndex < eventRows.length; rowIndex++) {
+            const row = eventRows[rowIndex];
+            let hasConflict = false;
+            
+            for (let dayIdx = startDayIndex; dayIdx <= endDayIndex; dayIdx++) {
+                if (row[dayIdx]) {
+                    hasConflict = true;
+                    break;
+                }
+            }
+            
+            if (!hasConflict) {
+                assignedRow = rowIndex;
+                break;
+            }
+        }
+        
+        // Create new row if needed
+        if (assignedRow === -1) {
+            assignedRow = eventRows.length;
+            eventRows.push(new Array(42).fill(null));
+        }
+        
+        // Mark days as occupied in this row
+        for (let dayIdx = startDayIndex; dayIdx <= endDayIndex; dayIdx++) {
+            eventRows[assignedRow][dayIdx] = event;
+        }
+        
+        // Store row info with event for later rendering
+        event.assignedRow = assignedRow;
+        event.startDayIndex = startDayIndex;
+        event.endDayIndex = endDayIndex;
+    });
+    
+    return eventRows;
+}
+
+function countMultiDayEventsForDay(dayIndex, multiDayEventRows) {
+    let count = 0;
+    for (let row of multiDayEventRows) {
+        if (row[dayIndex]) {
+            count++;
+        }
+    }
+    return count;
+}
+
+function renderMultiDayEvents(multiDayEventRows) {
+    const overlay = document.getElementById('multi-day-events-overlay');
+    overlay.innerHTML = '';
+    
+    // Get all multi-day events
+    const multiDayEvents = events.filter(event => {
+        const eventStartStr = event.start.split('T')[0];
+        const eventEndStr = event.end.split('T')[0];
+        return eventEndStr > eventStartStr;
+    });
+    
+    multiDayEvents.forEach(event => {
+        if (event.assignedRow !== undefined) {
+            createMultiDayEventBar(event, event.startDayIndex, event.endDayIndex, event.assignedRow);
+        }
+    });
+}
+
+function getDayIndex(dateStr) {
+    const targetDate = new Date(dateStr);
+    const startDate = new Date(calendarStartDate);
+    
+    for (let i = 0; i < 42; i++) {
+        const currentDate = new Date(startDate);
+        currentDate.setDate(startDate.getDate() + i);
+        
+        if (currentDate.toISOString().split('T')[0] === dateStr) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+function createMultiDayEventBar(event, startDayIndex, endDayIndex, rowIndex) {
+    const overlay = document.getElementById('multi-day-events-overlay');
+    const calendarDays = document.getElementById('calendar-days');
+    
+    // Calculate position
+    const startCol = startDayIndex % 7;
+    const endCol = endDayIndex % 7;
+    const startRow = Math.floor(startDayIndex / 7);
+    const endRow = Math.floor(endDayIndex / 7);
+    
+    // Handle events that span multiple weeks
+    for (let weekRow = startRow; weekRow <= endRow; weekRow++) {
+        const weekStartCol = (weekRow === startRow) ? startCol : 0;
+        const weekEndCol = (weekRow === endRow) ? endCol : 6;
+        
+        const eventBar = document.createElement('div');
+        eventBar.className = 'absolute text-xs px-2 py-1 cursor-pointer hover:opacity-80 text-white font-medium';
+        eventBar.style.backgroundColor = event.backgroundColor;
+        eventBar.style.pointerEvents = 'auto';
+        eventBar.onclick = () => window.location.href = event.url;
+        
+        // Calculate dimensions
+        const cellWidth = 100 / 7; // Each cell is 1/7 of the width
+        const cellHeight = 96; // min-h-24 = 96px
+        const eventHeight = 20; // Height of event bar
+        const eventMargin = 2; // Margin between events
+        
+        // Position the event bar
+        const left = weekStartCol * cellWidth;
+        const width = (weekEndCol - weekStartCol + 1) * cellWidth;
+        const top = weekRow * cellHeight + 24 + (rowIndex * (eventHeight + eventMargin)); // 24px for day number
+        
+        eventBar.style.left = `${left}%`;
+        eventBar.style.width = `${width}%`;
+        eventBar.style.top = `${top}px`;
+        eventBar.style.height = `${eventHeight}px`;
+        eventBar.style.borderRadius = '4px';
+        
+        // Set content based on position
+        if (weekRow === startRow) {
+            if (event.allDay) {
+                eventBar.textContent = event.title;
+            } else {
+                eventBar.textContent = `${event.title} (${new Date(event.start).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})})`;
+            }
+        } else {
+            eventBar.textContent = event.title; // Just title for continuation weeks
+        }
+        
+        overlay.appendChild(eventBar);
+    }
 }
 
 function navigateMonth(direction) {
