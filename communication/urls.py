@@ -15,4 +15,9 @@ urlpatterns = [
     path('community/post/<uuid:post_id>/', views.community_post_detail, name='community_post_detail'),
     path('community/post/<uuid:post_id>/edit/', views.edit_community_post, name='edit_community_post'),
     path('community/post/<uuid:post_id>/delete/', views.delete_community_post, name='delete_community_post'),
+    
+    # Notification URLs
+    path('notifications/', views.notification_list, name='notification_list'),
+    path('notifications/<int:notification_id>/mark-read/', views.mark_notification_read, name='mark_notification_read'),
+    path('notifications/mark-all-read/', views.mark_all_notifications_read, name='mark_all_notifications_read'),
 ]

@@ -66,6 +66,9 @@
         <!-- Filters -->
         <div class="px-6 py-4">
             <form method="GET" class="flex flex-wrap items-center gap-4">
+                <!-- Preserve current month and year -->
+                <input type="hidden" name="year" value="{{ current_month_year.year }}">
+                <input type="hidden" name="month" value="{{ current_month_year.month }}">
                 <div class="flex items-center space-x-2">
                     <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Property:</label>
                     {{ filter_form.property }}
@@ -433,12 +436,24 @@ function createMultiDayEventBar(event, startDayIndex, endDayIndex, rowIndex) {
 
 function navigateMonth(direction) {
     currentDate.setMonth(currentDate.getMonth() + direction);
-    loadEvents();
+    
+    // Preserve current filter parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    urlParams.set('year', currentDate.getFullYear());
+    urlParams.set('month', currentDate.getMonth() + 1);
+    
+    window.location.href = '{% url 'events:calendar_month' %}?' + urlParams.toString();
 }
 
 function goToToday() {
-    currentDate = new Date();
-    loadEvents();
+    const today = new Date();
+    
+    // Preserve current filter parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    urlParams.set('year', today.getFullYear());
+    urlParams.set('month', today.getMonth() + 1);
+    
+    window.location.href = '{% url 'events:calendar_month' %}?' + urlParams.toString();
 }
 </script>
 {% endblock %}

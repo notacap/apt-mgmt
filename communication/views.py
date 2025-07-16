@@ -3,8 +3,9 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages as django_messages
 from django.http import JsonResponse, HttpResponseForbidden
 from django.db.models import Q, Max, Count
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_http_methods, require_POST
 from django.contrib.auth import get_user_model
+from django.core.paginator import Paginator
 from .models import MessageThread, Message, MessageAttachment, MessageReadStatus, Notification, CommunityPost, CommunityPostAttachment
 from .forms import MessageForm, NewThreadForm, CommunityPostForm
 import json
@@ -435,3 +436,54 @@ def delete_community_post(request, post_id):
         'post': post,
     }
     return render(request, 'communication/delete_post.html', context)
+
+
+@login_required
+def mark_notification_read(request, notification_id):
+    """Mark a notification as read and redirect to its target URL"""
+    notification = get_object_or_404(Notification, id=notification_id, recipient=request.user)
+    
+    # Mark as read
+    notification.is_read = True
+    notification.save()
+    
+    # Redirect to the target URL if available
+    if notification.link_url:
+        return redirect(notification.link_url)
+    else:
+        return redirect('core:dashboard_redirect')
+
+
+@login_required 
+def notification_list(request):
+    """List all notifications for the current user"""
+    notifications = Notification.objects.filter(
+        recipient=request.user
+    ).order_by('-created_at')
+    
+    # Pagination
+    paginator = Paginator(notifications, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'page_obj': page_obj,
+        'total_notifications': notifications.count(),
+        'unread_count': notifications.filter(is_read=False).count(),
+    }
+    return render(request, 'communication/notification_list.html', context)
+
+
+@require_POST
+@login_required
+def mark_all_notifications_read(request):
+    """Mark all notifications as read for the current user"""
+    updated_count = Notification.objects.filter(
+        recipient=request.user,
+        is_read=False
+    ).update(is_read=True)
+    
+    return JsonResponse({
+        'success': True,
+        'message': f'Marked {updated_count} notifications as read'
+    })

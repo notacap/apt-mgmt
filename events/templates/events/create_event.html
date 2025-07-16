@@ -77,7 +77,7 @@
                                 {% endif %}
                             </div>
                             <!-- Start Time -->
-                            <div class="grid grid-cols-3 gap-2">
+                            <div class="grid grid-cols-3 gap-2" id="start-time-inputs">
                                 <div>
                                     <label for="{{ form.start_hour.id_for_label }}" class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Hour</label>
                                     {{ form.start_hour|add_form_control }}
@@ -116,7 +116,7 @@
                                 {% endif %}
                             </div>
                             <!-- End Time -->
-                            <div class="grid grid-cols-3 gap-2">
+                            <div class="grid grid-cols-3 gap-2" id="end-time-inputs">
                                 <div>
                                     <label for="{{ form.end_hour.id_for_label }}" class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Hour</label>
                                     {{ form.end_hour|add_form_control }}
@@ -276,21 +276,28 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // All-day event toggle
     const allDayCheckbox = document.getElementById('{{ form.is_all_day.id_for_label }}');
-    const startInput = document.getElementById('{{ form.start_datetime.id_for_label }}');
-    const endInput = document.getElementById('{{ form.end_datetime.id_for_label }}');
+    const startTimeInputs = document.getElementById('start-time-inputs');
+    const endTimeInputs = document.getElementById('end-time-inputs');
     
-    if (allDayCheckbox && startInput && endInput) {
-        allDayCheckbox.addEventListener('change', function() {
-            if (this.checked) {
-                // Convert to date inputs for all-day events
-                startInput.type = 'date';
-                endInput.type = 'date';
+    if (allDayCheckbox && startTimeInputs && endTimeInputs) {
+        // Function to toggle time inputs visibility
+        function toggleTimeInputs() {
+            if (allDayCheckbox.checked) {
+                // Hide time inputs for all-day events
+                startTimeInputs.style.display = 'none';
+                endTimeInputs.style.display = 'none';
             } else {
-                // Convert back to datetime inputs
-                startInput.type = 'datetime-local';
-                endInput.type = 'datetime-local';
+                // Show time inputs for timed events
+                startTimeInputs.style.display = 'grid';
+                endTimeInputs.style.display = 'grid';
             }
-        });
+        }
+        
+        // Set initial state based on checkbox value
+        toggleTimeInputs();
+        
+        // Add event listener for checkbox changes
+        allDayCheckbox.addEventListener('change', toggleTimeInputs);
     }
 });
 </script>

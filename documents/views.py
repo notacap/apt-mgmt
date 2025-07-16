@@ -8,6 +8,7 @@ from django.contrib.auth import get_user_model
 from .models import Document, DocumentCategory, DocumentShare
 from .forms import DocumentUploadForm, DocumentShareForm, DocumentFilterForm
 from communication.models import Notification
+from .notifications import create_document_share_notification, notify_document_assignments
 from properties.models import Property, ApartmentUnit
 import mimetypes
 
@@ -88,6 +89,9 @@ def document_upload(request):
                     role__in=['LANDLORD', 'EMPLOYEE']
                 )
                 document.allowed_users.set(company_managers)
+                
+                # Create notifications for assigned managers
+                notify_document_assignments(document, company_managers, request.user)
             else:
                 # Handle access level logic for landlords/employees
                 if document.access_level == Document.AccessLevel.COMPANY:
@@ -98,6 +102,10 @@ def document_upload(request):
                 
                 document.save()
                 form.save_m2m()  # Save many-to-many relationships
+                
+                # Create notifications for manually assigned users
+                if document.allowed_users.exists():
+                    notify_document_assignments(document, document.allowed_users.all(), request.user)
             
             messages.success(request, f'Document "{document.title}" uploaded successfully!')
             return redirect('documents:list')
@@ -164,13 +172,7 @@ def document_share(request, document_id):
             share.save()
             
             # Create notification for the recipient
-            Notification.objects.create(
-                recipient=share.shared_with,
-                notification_type='DOCUMENT_SHARED',
-                title=f'Document shared: {document.title}',
-                message=f'{request.user.get_full_name() or request.user.username} shared a document with you.',
-                link_url=f'/documents/{document.id}/'
-            )
+            create_document_share_notification(share)
             
             messages.success(request, f'Document shared with {share.shared_with.get_full_name() or share.shared_with.username}!')
             return redirect('documents:detail', document_id=document.id)

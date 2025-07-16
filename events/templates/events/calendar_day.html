@@ -248,7 +248,12 @@ function navigateDay(direction) {
     const currentDate = new Date('{{ view_date|date:"Y-m-d" }}');
     currentDate.setDate(currentDate.getDate() + direction);
     const newDate = currentDate.toISOString().split('T')[0];
-    window.location.href = `?date=${newDate}`;
+    
+    // Preserve current filter parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    urlParams.set('date', newDate);
+    
+    window.location.href = '{% url 'events:calendar_day' %}?' + urlParams.toString();
 }
 </script>
 {% endblock %}

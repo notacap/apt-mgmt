@@ -218,7 +218,12 @@ function navigateWeek(direction) {
     const currentStart = new Date('{{ start_date|date:"Y-m-d" }}');
     currentStart.setDate(currentStart.getDate() + (direction * 7));
     const newDate = currentStart.toISOString().split('T')[0];
-    window.location.href = `?date=${newDate}`;
+    
+    // Preserve current filter parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    urlParams.set('date', newDate);
+    
+    window.location.href = '{% url 'events:calendar_week' %}?' + urlParams.toString();
 }
 </script>
 {% endblock %}

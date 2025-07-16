@@ -143,49 +143,65 @@ class CalendarEventForm(forms.ModelForm):
         start_datetime = None
         end_datetime = None
         
-        if start_date and start_hour is not None and start_minute is not None and start_ampm:
-            try:
-                # Convert 12-hour to 24-hour format
-                hour_24 = int(start_hour)
-                if start_ampm == 'PM' and hour_24 != 12:
-                    hour_24 += 12
-                elif start_ampm == 'AM' and hour_24 == 12:
-                    hour_24 = 0
-                
-                start_datetime = datetime.combine(start_date, time(hour_24, int(start_minute)))
+        if is_all_day:
+            # For all-day events, use default times and ignore time inputs
+            if start_date:
+                start_datetime = datetime.combine(start_date, time(0, 0))  # Start at midnight
                 cleaned_data['start_datetime'] = start_datetime
-            except (ValueError, TypeError):
-                raise ValidationError('Invalid start time.')
-        
-        if end_date and end_hour is not None and end_minute is not None and end_ampm:
-            try:
-                # Convert 12-hour to 24-hour format
-                hour_24 = int(end_hour)
-                if end_ampm == 'PM' and hour_24 != 12:
-                    hour_24 += 12
-                elif end_ampm == 'AM' and hour_24 == 12:
-                    hour_24 = 0
-                
-                end_datetime = datetime.combine(end_date, time(hour_24, int(end_minute)))
-                cleaned_data['end_datetime'] = end_datetime
-            except (ValueError, TypeError):
-                raise ValidationError('Invalid end time.')
-
-        # Validate datetime range
-        if start_datetime and end_datetime:
-            if start_datetime >= end_datetime:
-                raise ValidationError('End time must be after start time.')
             
-            # For all-day events, ensure it's at least a day apart
-            if is_all_day:
-                time_diff = end_datetime - start_datetime
-                if time_diff.days < 1:
-                    raise ValidationError('All-day events must span at least one full day.')
+            if end_date:
+                end_datetime = datetime.combine(end_date, time(23, 59))  # End at 11:59 PM
+                cleaned_data['end_datetime'] = end_datetime
+            
+            # Validate date range for all-day events
+            if start_date and end_date:
+                if start_date > end_date:
+                    raise ValidationError('End date must be on or after start date.')
+        else:
+            # For timed events, process time components
+            if start_date and start_hour is not None and start_minute is not None and start_ampm:
+                try:
+                    # Convert 12-hour to 24-hour format
+                    hour_24 = int(start_hour)
+                    if start_ampm == 'PM' and hour_24 != 12:
+                        hour_24 += 12
+                    elif start_ampm == 'AM' and hour_24 == 12:
+                        hour_24 = 0
+                    
+                    start_datetime = datetime.combine(start_date, time(hour_24, int(start_minute)))
+                    cleaned_data['start_datetime'] = start_datetime
+                except (ValueError, TypeError):
+                    raise ValidationError('Invalid start time.')
+            
+            if end_date and end_hour is not None and end_minute is not None and end_ampm:
+                try:
+                    # Convert 12-hour to 24-hour format
+                    hour_24 = int(end_hour)
+                    if end_ampm == 'PM' and hour_24 != 12:
+                        hour_24 += 12
+                    elif end_ampm == 'AM' and hour_24 == 12:
+                        hour_24 = 0
+                    
+                    end_datetime = datetime.combine(end_date, time(hour_24, int(end_minute)))
+                    cleaned_data['end_datetime'] = end_datetime
+                except (ValueError, TypeError):
+                    raise ValidationError('Invalid end time.')
+
+            # Validate datetime range for timed events
+            if start_datetime and end_datetime:
+                if start_datetime >= end_datetime:
+                    raise ValidationError('End time must be after start time.')
 
         return cleaned_data
     
     def save(self, commit=True):
         event = super().save(commit=False)
+        
+        # Manually assign datetime fields from cleaned_data
+        if 'start_datetime' in self.cleaned_data:
+            event.start_datetime = self.cleaned_data['start_datetime']
+        if 'end_datetime' in self.cleaned_data:
+            event.end_datetime = self.cleaned_data['end_datetime']
         
         if commit:
             event.save()
@@ -247,7 +263,6 @@ class WorkScheduleForm(forms.ModelForm):
 
 class EventFilterForm(forms.Form):
     EVENT_TYPE_CHOICES = [('', 'All Types')] + list(CalendarEvent.EventType.choices)
-    PRIORITY_CHOICES = [('', 'All Priorities')] + list(CalendarEvent.Priority.choices)
     
     property = forms.ModelChoiceField(
         queryset=Property.objects.none(),
