@@ -22,7 +22,7 @@ def calendar_view(request):
 def calendar_month_view(request):
     """Month view of the calendar"""
     # Get current date or date from parameters
-    today = timezone.now().date()
+    today = timezone.localtime().date()
     year = int(request.GET.get('year', today.year))
     month = int(request.GET.get('month', today.month))
     
@@ -55,7 +55,7 @@ def calendar_month_view(request):
 @login_required
 def calendar_week_view(request):
     """Week view of the calendar"""
-    today = timezone.now().date()
+    today = timezone.localtime().date()
     
     # Get the start of the week (Monday)
     days_since_monday = today.weekday()
@@ -114,7 +114,7 @@ def calendar_week_view(request):
 @login_required
 def calendar_day_view(request):
     """Day view of the calendar"""
-    today = timezone.now().date()
+    today = timezone.localtime().date()
     
     # Get date from parameter or use today
     view_date = today
@@ -387,11 +387,19 @@ def get_events_json(request):
     
     events_data = []
     for event in events:
+        # For all-day events, use date strings to avoid timezone issues
+        if event.is_all_day:
+            start_str = event.start_datetime.date().isoformat()
+            end_str = event.end_datetime.date().isoformat()
+        else:
+            start_str = event.start_datetime.isoformat()
+            end_str = event.end_datetime.isoformat()
+            
         events_data.append({
             'id': event.id,
             'title': event.title,
-            'start': event.start_datetime.isoformat(),
-            'end': event.end_datetime.isoformat(),
+            'start': start_str,
+            'end': end_str,
             'allDay': event.is_all_day,
             'backgroundColor': get_event_color(event.event_type),
             'borderColor': get_event_color(event.event_type),

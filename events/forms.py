@@ -1,7 +1,9 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+from django.conf import settings
 from datetime import datetime, time
+import zoneinfo
 from .models import CalendarEvent, WorkSchedule
 from properties.models import Property, ApartmentUnit
 from users.models import User
@@ -145,12 +147,17 @@ class CalendarEventForm(forms.ModelForm):
         
         if is_all_day:
             # For all-day events, use default times and ignore time inputs
+            # Create timezone-aware datetime objects in the local timezone
+            local_tz = zoneinfo.ZoneInfo(settings.TIME_ZONE)
+            
             if start_date:
-                start_datetime = datetime.combine(start_date, time(0, 0))  # Start at midnight
+                # Start at midnight in local timezone
+                start_datetime = datetime.combine(start_date, time(0, 0), tzinfo=local_tz)
                 cleaned_data['start_datetime'] = start_datetime
             
             if end_date:
-                end_datetime = datetime.combine(end_date, time(23, 59))  # End at 11:59 PM
+                # End at 23:59:59 in local timezone to prevent timezone issues
+                end_datetime = datetime.combine(end_date, time(23, 59, 59), tzinfo=local_tz)
                 cleaned_data['end_datetime'] = end_datetime
             
             # Validate date range for all-day events
@@ -159,6 +166,9 @@ class CalendarEventForm(forms.ModelForm):
                     raise ValidationError('End date must be on or after start date.')
         else:
             # For timed events, process time components
+            # Create timezone-aware datetime objects in the local timezone
+            local_tz = zoneinfo.ZoneInfo(settings.TIME_ZONE)
+            
             if start_date and start_hour is not None and start_minute is not None and start_ampm:
                 try:
                     # Convert 12-hour to 24-hour format
@@ -168,7 +178,7 @@ class CalendarEventForm(forms.ModelForm):
                     elif start_ampm == 'AM' and hour_24 == 12:
                         hour_24 = 0
                     
-                    start_datetime = datetime.combine(start_date, time(hour_24, int(start_minute)))
+                    start_datetime = datetime.combine(start_date, time(hour_24, int(start_minute)), tzinfo=local_tz)
                     cleaned_data['start_datetime'] = start_datetime
                 except (ValueError, TypeError):
                     raise ValidationError('Invalid start time.')
@@ -182,7 +192,7 @@ class CalendarEventForm(forms.ModelForm):
                     elif end_ampm == 'AM' and hour_24 == 12:
                         hour_24 = 0
                     
-                    end_datetime = datetime.combine(end_date, time(hour_24, int(end_minute)))
+                    end_datetime = datetime.combine(end_date, time(hour_24, int(end_minute)), tzinfo=local_tz)
                     cleaned_data['end_datetime'] = end_datetime
                 except (ValueError, TypeError):
                     raise ValidationError('Invalid end time.')
