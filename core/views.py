@@ -1,6 +1,8 @@
 from django.shortcuts import render, redirect
 from django.contrib import messages
+from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import AuthenticationForm
 from django.db.models import Q, Count
 from users.forms import LandlordCreationForm, InvitationForm, UserProfileForm, InvitationAcceptanceForm
 from users.models import User, Invitation
@@ -8,8 +10,11 @@ from django.contrib.auth.models import Group
 from documents.models import Document, DocumentShare
 from maintenance.models import MaintenanceRequest
 from communication.models import MessageThread
-from datetime import timedelta
+from properties.models import ApartmentUnit
+from financials.models import PaymentSchedule
+from datetime import timedelta, date
 from django.utils import timezone
+from django.http import JsonResponse
 
 # Create your views here.
 
@@ -349,6 +354,40 @@ def accept_invitation(request, token):
             group_name = f"{invitation.role.capitalize()}s"
             group = Group.objects.get(name=group_name)
             user.groups.add(group)
+            
+            # Handle tenant-specific setup
+            if invitation.role == 'TENANT' and invitation.apartment_unit:
+                # Mark the unit as occupied
+                invitation.apartment_unit.is_occupied = True
+                invitation.apartment_unit.save()
+                
+                # Create payment schedule
+                if invitation.rent_amount and invitation.rent_payment_date and invitation.lease_length_months:
+                    start_date = date.today()
+                    # Calculate end date based on lease length
+                    year = start_date.year
+                    month = start_date.month + invitation.lease_length_months
+                    while month > 12:
+                        month -= 12
+                        year += 1
+                    end_date = date(year, month, start_date.day)
+                    
+                    PaymentSchedule.objects.create(
+                        tenant=user,
+                        apartment_unit=invitation.apartment_unit,
+                        rent_amount=invitation.rent_amount,
+                        frequency='MONTHLY',
+                        payment_day=invitation.rent_payment_date,
+                        start_date=start_date,
+                        end_date=end_date,
+                        is_active=True
+                    )
+            
+            # Handle employee-specific setup
+            elif invitation.role == 'EMPLOYEE' and invitation.all_properties:
+                # If employee has access to all properties, clear the specific property assignment
+                user.property = None
+                user.save()
 
             invitation.is_accepted = True
             invitation.save()
@@ -384,3 +423,55 @@ def profile(request):
     else:
         form = UserProfileForm(instance=request.user)
     return render(request, "accounts/profile.html", {"form": form})
+
+@login_required
+def get_available_units(request, property_id):
+    """API endpoint to fetch available units for a property"""
+    if request.user.role not in [User.Role.LANDLORD, User.Role.EMPLOYEE]:
+        return JsonResponse({'error': 'Permission denied'}, status=403)
+    
+    # Get unoccupied units for the property
+    units = ApartmentUnit.objects.filter(
+        property_id=property_id,
+        property__company=request.user.company,
+        is_occupied=False
+    ).values('id', 'unit_number', 'rent_amount', 'bedrooms', 'bathrooms')
+    
+    return JsonResponse({'units': list(units)})
+
+def custom_login(request):
+    """Custom login view with specific error messages"""
+    if request.user.is_authenticated:
+        return redirect('core:dashboard_redirect')
+    
+    if request.method == 'POST':
+        form = AuthenticationForm(request, data=request.POST)
+        username = request.POST.get('username', '').strip()
+        password = request.POST.get('password', '')
+        
+        if username and password:
+            # Check if user exists
+            try:
+                user = User.objects.get(username=username)
+                # User exists, try to authenticate
+                authenticated_user = authenticate(request, username=username, password=password)
+                
+                if authenticated_user is not None:
+                    login(request, authenticated_user)
+                    next_url = request.GET.get('next', 'core:dashboard_redirect')
+                    return redirect(next_url)
+                else:
+                    # Password is incorrect
+                    form.is_valid()  # Trigger form validation
+                    form.add_error('password', 'Incorrect password')
+            except User.DoesNotExist:
+                # User doesn't exist
+                form.is_valid()  # Trigger form validation
+                form.add_error('username', 'User doesn\'t exist')
+        else:
+            # Let the form handle its own validation for empty fields
+            form.is_valid()
+    else:
+        form = AuthenticationForm()
+    
+    return render(request, 'accounts/login.html', {'form': form})

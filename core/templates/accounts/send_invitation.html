@@ -6,23 +6,183 @@
 {% block content %}
 <div class="container mx-auto max-w-lg">
     <h1 class="text-3xl font-bold mb-6 text-center">Send Invitation</h1>
-    <form method="post" class="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-lg space-y-6">
+    <form method="post" class="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-lg space-y-6" id="invitation-form">
         {% csrf_token %}
         
-        {% for field in form %}
+        <!-- Email Field -->
+        <div>
+            <label for="{{ form.email.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">{{ form.email.label }}</label>
+            {{ form.email|addclass:"w-full p-3 bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" }}
+            {% if form.email.help_text %}
+                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ form.email.help_text }}</p>
+            {% endif %}
+            {% for error in form.email.errors %}
+                <p class="mt-2 text-xs text-red-600 dark:text-red-400">{{ error }}</p>
+            {% endfor %}
+        </div>
+
+        <!-- Role Field -->
+        <div>
+            <label for="{{ form.role.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">{{ form.role.label }}</label>
+            {{ form.role|addclass:"w-full p-3 bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" }}
+            {% if form.role.help_text %}
+                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ form.role.help_text }}</p>
+            {% endif %}
+            {% for error in form.role.errors %}
+                <p class="mt-2 text-xs text-red-600 dark:text-red-400">{{ error }}</p>
+            {% endfor %}
+        </div>
+
+        <!-- Property Field -->
+        <div id="property-field">
+            <label for="{{ form.property.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">{{ form.property.label }}</label>
+            {{ form.property|addclass:"w-full p-3 bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" }}
+            {% if form.property.help_text %}
+                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ form.property.help_text }}</p>
+            {% endif %}
+            {% for error in form.property.errors %}
+                <p class="mt-2 text-xs text-red-600 dark:text-red-400">{{ error }}</p>
+            {% endfor %}
+        </div>
+
+        <!-- Employee All Properties Field -->
+        <div id="all-properties-field" style="display:none;">
+            <label class="flex items-center">
+                {{ form.all_properties }}
+                <span class="ml-2 text-sm font-medium text-gray-900 dark:text-gray-300">Grant access to all properties</span>
+            </label>
+            {% if form.all_properties.help_text %}
+                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ form.all_properties.help_text }}</p>
+            {% endif %}
+            {% for error in form.all_properties.errors %}
+                <p class="mt-2 text-xs text-red-600 dark:text-red-400">{{ error }}</p>
+            {% endfor %}
+        </div>
+
+        <!-- Tenant-specific Fields -->
+        <div id="tenant-fields" style="display:none;">
+            <!-- Apartment Unit Field -->
             <div>
-                <label for="{{ field.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">{{ field.label }}</label>
-                {{ field|addclass:"w-full p-3 bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" }}
-                {% if field.help_text %}
-                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ field.help_text }}</p>
+                <label for="{{ form.apartment_unit.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">{{ form.apartment_unit.label }}</label>
+                {{ form.apartment_unit|addclass:"w-full p-3 bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" }}
+                {% if form.apartment_unit.help_text %}
+                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ form.apartment_unit.help_text }}</p>
                 {% endif %}
-                {% for error in field.errors %}
+                {% for error in form.apartment_unit.errors %}
                     <p class="mt-2 text-xs text-red-600 dark:text-red-400">{{ error }}</p>
                 {% endfor %}
             </div>
-        {% endfor %}
+
+            <!-- Rent Amount Field -->
+            <div>
+                <label for="{{ form.rent_amount.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">{{ form.rent_amount.label }}</label>
+                {{ form.rent_amount|addclass:"w-full p-3 bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" }}
+                {% if form.rent_amount.help_text %}
+                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ form.rent_amount.help_text }}</p>
+                {% endif %}
+                {% for error in form.rent_amount.errors %}
+                    <p class="mt-2 text-xs text-red-600 dark:text-red-400">{{ error }}</p>
+                {% endfor %}
+            </div>
+
+            <!-- Rent Payment Date Field -->
+            <div>
+                <label for="{{ form.rent_payment_date.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">{{ form.rent_payment_date.label }}</label>
+                {{ form.rent_payment_date|addclass:"w-full p-3 bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" }}
+                {% if form.rent_payment_date.help_text %}
+                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ form.rent_payment_date.help_text }}</p>
+                {% endif %}
+                {% for error in form.rent_payment_date.errors %}
+                    <p class="mt-2 text-xs text-red-600 dark:text-red-400">{{ error }}</p>
+                {% endfor %}
+            </div>
+
+            <!-- Lease Length Field -->
+            <div>
+                <label for="{{ form.lease_length_months.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">{{ form.lease_length_months.label }}</label>
+                {{ form.lease_length_months|addclass:"w-full p-3 bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" }}
+                {% if form.lease_length_months.help_text %}
+                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ form.lease_length_months.help_text }}</p>
+                {% endif %}
+                {% for error in form.lease_length_months.errors %}
+                    <p class="mt-2 text-xs text-red-600 dark:text-red-400">{{ error }}</p>
+                {% endfor %}
+            </div>
+        </div>
 
         <button type="submit" class="w-full bg-blue-600 text-white p-3 rounded-lg font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800">Send Invitation</button>
     </form>
 </div>
-{% endblock %} 
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const roleField = document.getElementById('{{ form.role.id_for_label }}');
+    const propertyField = document.getElementById('{{ form.property.id_for_label }}');
+    const tenantFields = document.getElementById('tenant-fields');
+    const allPropertiesField = document.getElementById('all-properties-field');
+    const propertyFieldDiv = document.getElementById('property-field');
+    const apartmentUnitField = document.getElementById('{{ form.apartment_unit.id_for_label }}');
+    
+    // Function to update apartment units based on selected property
+    function updateApartmentUnits() {
+        const propertyId = propertyField.value;
+        if (propertyId && roleField.value === 'TENANT') {
+            // Fetch available units for the selected property
+            fetch(`/api/properties/${propertyId}/available-units/`)
+                .then(response => response.json())
+                .then(data => {
+                    // Clear existing options
+                    apartmentUnitField.innerHTML = '<option value="">---------</option>';
+                    // Add new options
+                    data.units.forEach(unit => {
+                        const option = document.createElement('option');
+                        option.value = unit.id;
+                        option.textContent = `Unit ${unit.unit_number} - $${unit.rent_amount}/month`;
+                        apartmentUnitField.appendChild(option);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching units:', error);
+                });
+        }
+    }
+    
+    // Function to toggle fields based on role
+    function toggleFields() {
+        const selectedRole = roleField.value;
+        
+        if (selectedRole === 'TENANT') {
+            tenantFields.style.display = 'block';
+            allPropertiesField.style.display = 'none';
+            propertyField.required = true;
+            updateApartmentUnits();
+        } else if (selectedRole === 'EMPLOYEE') {
+            tenantFields.style.display = 'none';
+            allPropertiesField.style.display = 'block';
+            // Property is optional for employees if all_properties is checked
+            document.getElementById('{{ form.all_properties.id_for_label }}').addEventListener('change', function() {
+                propertyField.required = !this.checked;
+                if (this.checked) {
+                    propertyField.value = '';
+                    propertyFieldDiv.style.opacity = '0.5';
+                } else {
+                    propertyFieldDiv.style.opacity = '1';
+                }
+            });
+        } else {
+            tenantFields.style.display = 'none';
+            allPropertiesField.style.display = 'none';
+            propertyField.required = true;
+            propertyFieldDiv.style.opacity = '1';
+        }
+    }
+    
+    // Add event listeners
+    roleField.addEventListener('change', toggleFields);
+    propertyField.addEventListener('change', updateApartmentUnits);
+    
+    // Initial toggle
+    toggleFields();
+});
+</script>
+{% endblock %}

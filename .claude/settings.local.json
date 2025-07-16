@@ -5,7 +5,8 @@
       "Bash(mkdir:*)",
       "Bash(find:*)",
       "Bash(grep:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(wc:*)"
     ],
     "deny": []
   }

@@ -1,5 +1,5 @@
 from django.urls import path
-from django.contrib.auth.views import LoginView, LogoutView
+from django.contrib.auth.views import LogoutView
 from .views import (
     index, 
     landlord_dashboard, 
@@ -9,13 +9,15 @@ from .views import (
     send_invitation, 
     profile,
     dashboard_redirect,
-    accept_invitation
+    accept_invitation,
+    get_available_units,
+    custom_login
 )
 
 app_name = "core"
 
 urlpatterns = [
-    path("login/", LoginView.as_view(template_name="accounts/login.html"), name="login"),
+    path("login/", custom_login, name="login"),
     path("logout/", LogoutView.as_view(next_page="core:login"), name="logout"),
     path("accept-invitation/<uuid:token>/", accept_invitation, name="accept_invitation"),
     path("dashboard/", dashboard_redirect, name="dashboard_redirect"),
@@ -26,4 +28,6 @@ urlpatterns = [
     path("dashboard/landlord/", landlord_dashboard, name="landlord_dashboard"),
     path("dashboard/employee/", employee_dashboard, name="employee_dashboard"),
     path("dashboard/tenant/", tenant_dashboard, name="tenant_dashboard"),
+    # API endpoints
+    path("api/properties/<int:property_id>/available-units/", get_available_units, name="get_available_units"),
 ] 
