@@ -377,7 +377,13 @@ def get_events_json(request):
     except ValueError:
         return JsonResponse({'error': 'Invalid date format'}, status=400)
     
+    # Get base events for user
     events = get_user_events(request.user, start_date, end_date)
+    
+    # Apply filters like other calendar views
+    filter_form = EventFilterForm(request.GET, user=request.user)
+    if filter_form.is_valid():
+        events = apply_event_filters(events, filter_form.cleaned_data, request.user)
     
     events_data = []
     for event in events:
