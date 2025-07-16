@@ -294,6 +294,41 @@ def tenant_payments(request):
 
 
 @login_required
+def payment_portal(request):
+    """Payment portal for tenants to make payments"""
+    if request.user.role != 'TENANT':
+        messages.error(request, "This page is only accessible to tenants.")
+        return redirect('core:dashboard_redirect')
+    
+    # Get current/upcoming payment
+    current_payment = None
+    payment_schedule = None
+    upcoming_payments = []
+    
+    if request.user.payment_schedules.exists():
+        payment_schedule = request.user.payment_schedules.first()
+        # Get the most recent unpaid or partially paid payment
+        current_payment = RentPayment.objects.filter(
+            payment_schedule=payment_schedule,
+            status__in=['PENDING', 'OVERDUE', 'PARTIAL']
+        ).order_by('due_date').first()
+        
+        # Get upcoming payments
+        upcoming_payments = RentPayment.objects.filter(
+            payment_schedule=payment_schedule,
+            status__in=['PENDING', 'OVERDUE', 'PARTIAL']
+        ).order_by('due_date')[:3]
+    
+    context = {
+        'current_payment': current_payment,
+        'payment_schedule': payment_schedule,
+        'upcoming_payments': upcoming_payments,
+        'page_title': 'Make a Payment'
+    }
+    return render(request, 'financials/payment_portal.html', context)
+
+
+@login_required
 def tenant_make_payment(request, pk):
     """Tenant submits payment information"""
     payment = get_object_or_404(RentPayment, pk=pk)

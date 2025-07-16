@@ -239,7 +239,7 @@
             <div class="p-6 border-b border-gray-200 dark:border-gray-700">
                 <div class="flex items-center justify-between">
                     <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Rent & Payments</h3>
-                    <a href="#" class="text-blue-600 dark:text-blue-400 hover:underline text-sm">Payment History</a>
+                    <a href="{% url 'financials:tenant_payments' %}" class="text-blue-600 dark:text-blue-400 hover:underline text-sm">Payment History</a>
                 </div>
             </div>
             <div class="p-6">
@@ -267,9 +267,9 @@
                             <p class="text-2xl font-bold text-blue-900 dark:text-blue-100">$1,250</p>
                             <p class="text-sm text-blue-700 dark:text-blue-300">Due Feb 1, 2024</p>
                         </div>
-                        <button class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">
+                        <a href="{% url 'financials:payment_portal' %}" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 inline-block">
                             Pay Now
-                        </button>
+                        </a>
                     </div>
                 </div>
 

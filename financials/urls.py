@@ -16,6 +16,7 @@ urlpatterns = [
     path('payments/<int:pk>/', views.payment_detail, name='payment_detail'),
     path('payments/<int:pk>/process/', views.process_payment, name='process_payment'),
     path('payments/tenant/', views.tenant_payments, name='tenant_payments'),
+    path('payments/tenant/portal/', views.payment_portal, name='payment_portal'),
     path('payments/tenant/pay/<int:pk>/', views.tenant_make_payment, name='tenant_make_payment'),
     
     # Expense URLs
