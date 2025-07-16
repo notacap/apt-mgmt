@@ -389,8 +389,21 @@ def get_events_json(request):
     for event in events:
         # For all-day events, use date strings to avoid timezone issues
         if event.is_all_day:
-            start_str = event.start_datetime.date().isoformat()
-            end_str = event.end_datetime.date().isoformat()
+            # Convert to local timezone first, then get the date
+            local_start = timezone.localtime(event.start_datetime)
+            local_end = timezone.localtime(event.end_datetime)
+            
+            # For single-day all-day events, use the start date for both start and end
+            start_date = local_start.date()
+            
+            # If start and end are on the same local date, it's a single-day event
+            if local_start.date() == local_end.date():
+                end_date = start_date
+            else:
+                end_date = local_end.date()
+            
+            start_str = start_date.isoformat()
+            end_str = end_date.isoformat()
         else:
             start_str = event.start_datetime.isoformat()
             end_str = event.end_datetime.isoformat()
