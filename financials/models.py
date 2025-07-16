@@ -1,6 +1,6 @@
 from django.db import models
 from django.contrib.auth import get_user_model
-from django.core.validators import MinValueValidator
+from django.core.validators import MinValueValidator, MaxValueValidator
 from decimal import Decimal
 import uuid
 
@@ -35,6 +35,11 @@ class PaymentSchedule(models.Model):
         max_length=20,
         choices=Frequency.choices,
         default=Frequency.MONTHLY
+    )
+    payment_day = models.IntegerField(
+        default=1,
+        validators=[MinValueValidator(1), MaxValueValidator(28)],
+        help_text="Day of month when payment is due (1-28)"
     )
     start_date = models.DateField()
     end_date = models.DateField(null=True, blank=True)

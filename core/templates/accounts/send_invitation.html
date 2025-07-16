@@ -138,7 +138,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     data.units.forEach(unit => {
                         const option = document.createElement('option');
                         option.value = unit.id;
-                        option.textContent = `Unit ${unit.unit_number} - $${unit.rent_amount}/month (${unit.bedrooms}BR/${unit.bathrooms}BA)`;
+                        option.textContent = `Unit ${unit.unit_number} (${unit.bedrooms}BR/${unit.bathrooms}BA)`;
                         apartmentUnitField.appendChild(option);
                     });
                 })

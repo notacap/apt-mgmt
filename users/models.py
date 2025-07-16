@@ -13,6 +13,24 @@ class User(AbstractUser):
     role = models.CharField(max_length=50, choices=Role.choices)
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="users", null=True, blank=True)
     property = models.ForeignKey(Property, on_delete=models.SET_NULL, related_name="users", null=True, blank=True)
+    # For employees with all_properties access, property field will be null
+    # and we'll check company-wide access in permission checks
+    
+    def has_property_access(self, property):
+        """Check if user has access to a specific property"""
+        if self.role == self.Role.SUPERUSER:
+            return True
+        if self.role == self.Role.LANDLORD and self.company == property.company:
+            return True
+        if self.role == self.Role.EMPLOYEE:
+            # Check if employee has all properties access or specific property access
+            if self.property is None and self.company == property.company:
+                return True  # All properties access
+            elif self.property == property:
+                return True  # Specific property access
+        if self.role == self.Role.TENANT and self.property == property:
+            return True
+        return False
 
     def __str__(self):
         return f"{self.username} ({self.get_role_display()})"

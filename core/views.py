@@ -435,7 +435,7 @@ def get_available_units(request, property_id):
         property_id=property_id,
         property__company=request.user.company,
         is_occupied=False
-    ).values('id', 'unit_number', 'rent_amount', 'bedrooms', 'bathrooms')
+    ).values('id', 'unit_number', 'bedrooms', 'bathrooms')
     
     return JsonResponse({'units': list(units)})
 

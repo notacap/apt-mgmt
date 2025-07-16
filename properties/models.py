@@ -33,7 +33,6 @@ class ApartmentUnit(models.Model):
     unit_number = models.CharField(max_length=50)
     bedrooms = models.PositiveIntegerField()
     bathrooms = models.PositiveIntegerField()
-    rent_amount = models.DecimalField(max_digits=10, decimal_places=2)
     is_occupied = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
