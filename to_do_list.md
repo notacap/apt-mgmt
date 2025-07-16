@@ -57,21 +57,21 @@
 
 ## Phase 7: Calendar System
 
-- [ ] Create calendar event model
-- [ ] Build calendar UI with month/week/day views
-- [ ] Implement event creation for authorized users
-- [ ] Add maintenance request integration
-- [ ] Create work schedule management for employees
-- [ ] Implement calendar filtering by user role
+- [x] Create calendar event model
+- [x] Build calendar UI with month/week/day views
+- [x] Implement event creation for authorized users
+- [x] Add maintenance request integration
+- [x] Create work schedule management for employees
+- [x] Implement calendar filtering by user role
 
 ## Phase 8: Financial Features
 
-- [ ] Build rent payment interface for tenants
-- [ ] Implement payment scheduling system
-- [ ] Create payment history tracking
-- [ ] Add payment notification system
-- [ ] Build financial reporting for landlords
-- [ ] Implement expense tracking
+- [x] Build rent payment interface for tenants
+- [x] Implement payment scheduling system
+- [x] Create payment history tracking
+- [x] Add payment notification system
+- [x] Build financial reporting for landlords
+- [x] Implement expense tracking
 
 ## Phase 9: Detailed Views
 

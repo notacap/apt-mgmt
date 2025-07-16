@@ -50,7 +50,8 @@ This is a Django apartment management platform with a multi-app structure design
 - **communication/**: Messaging, notifications, and community board system (completed)
 - **documents/**: Document management with role-based access (completed)
 - **maintenance/**: Comprehensive maintenance request workflow with invoice management (completed)
-- **financials/**: Rent payment and financial tracking (planned)
+- **events/**: Calendar system with event management and work schedules (completed)
+- **financials/**: Rent payment and financial tracking (completed)
 
 ### Key Models and Relationships
 - **User** (users/models.py): Custom user with roles (SUPERUSER, LANDLORD, EMPLOYEE, TENANT)
@@ -63,7 +64,14 @@ This is a Django apartment management platform with a multi-app structure design
 - **MaintenanceInvoice** (maintenance/models.py): Invoice management with documents integration for financial tracking
 - **MessageThread** (communication/models.py): Direct messaging system with thread-based conversations
 - **Message** (communication/models.py): Individual messages with file attachments and read status tracking
+- **Notification** (communication/models.py): Enhanced notification system with dynamic updates and real-time UI interactions
 - **CommunityPost** (communication/models.py): Property-specific community board with posts, events, and moderation
+- **CalendarEvent** (events/models.py): Calendar system with event management, assignment, and maintenance integration
+- **WorkSchedule** (events/models.py): Employee work schedule management with recurring patterns
+- **PaymentSchedule** (financials/models.py): Recurring rent payment schedules for tenants with frequency and amount tracking
+- **RentPayment** (financials/models.py): Individual payment records with status tracking and audit trail
+- **ExpenseRecord** (financials/models.py): Property expense management with categorization and maintenance integration
+- **PaymentReceipt** (financials/models.py): Receipt generation and tracking for processed payments
 
 ### Multi-Tenancy Design
 The platform supports multiple management companies through:
@@ -106,7 +114,33 @@ The platform supports multiple management companies through:
   - Author-only editing with role-based moderation capabilities
   - Inline image display and downloadable file attachments
   - Integrated notification system for new messages
-- **Ready for Phase 7**: Calendar system
+- **Notification System Enhanced**: Comprehensive notification system including:
+  - Dynamic notification system for document assignments and sharing
+  - Smart notification dropdown showing only unread notifications (max 5)
+  - Real-time UI updates with AJAX-based notification interactions
+  - Automatic notification removal from dropdown when clicked
+  - Full notification list view with pagination and mark-all-read functionality
+  - Context processor providing notification data to all templates
+  - Visual distinction between read and unread notifications
+  - Automatic notifications for tenant document uploads to managers
+- **Phase 7 Complete**: Calendar system including:
+  - Multi-view calendar interface (month, week, day) with responsive design
+  - Role-based event management with CRUD operations for landlords/employees
+  - Visual multi-day event spanning with color-coded event types
+  - Employee work schedule management system
+  - Maintenance request integration with automatic calendar event creation
+  - Advanced filtering capabilities and timezone handling
+  - Event notifications and dashboard integration
+- **Phase 8 Complete**: Financial features including:
+  - Comprehensive payment scheduling system for landlords/employees
+  - Tenant payment interface with status tracking and history
+  - Payment processing workflow with automatic status updates
+  - Multi-status payment tracking (Pending, Paid, Overdue, Partial, Failed)
+  - Advanced filtering and search capabilities for payment history
+  - Role-based access control ensuring tenant data isolation
+  - Notification system integration for payment events
+  - Dashboard integration with financial navigation menus
+- **Ready for Phase 9**: Detailed views and expanded functionality
 
 ### Important Files to Update
 - **project_context.md**: Update when completing major phases
