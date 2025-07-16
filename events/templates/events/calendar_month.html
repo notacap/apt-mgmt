@@ -177,7 +177,12 @@ function loadEvents() {
     const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
     const endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
     
-    fetch(`{% url 'events:get_events_json' %}?start=${startDate.toISOString().split('T')[0]}&end=${endDate.toISOString().split('T')[0]}`)
+    // Build query parameters including current filters
+    const urlParams = new URLSearchParams(window.location.search);
+    urlParams.set('start', startDate.toISOString().split('T')[0]);
+    urlParams.set('end', endDate.toISOString().split('T')[0]);
+    
+    fetch(`{% url 'events:get_events_json' %}?${urlParams.toString()}`)
         .then(response => response.json())
         .then(data => {
             events = data;

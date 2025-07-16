@@ -447,7 +447,14 @@ def mark_notification_read(request, notification_id):
     notification.is_read = True
     notification.save()
     
-    # Redirect to the target URL if available
+    # Handle AJAX requests
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({
+            'success': True,
+            'redirect_url': notification.link_url or '/dashboard/'
+        })
+    
+    # Regular requests - redirect to the target URL if available
     if notification.link_url:
         return redirect(notification.link_url)
     else:

@@ -14,13 +14,12 @@ def notifications(request):
             is_read=False
         ).order_by('-created_at')
         
-        recent_notifications = Notification.objects.filter(
-            recipient=request.user
-        ).order_by('-created_at')[:5]
+        # For dropdown: only show recent unread notifications (max 5)
+        recent_unread_notifications = unread_notifications[:5]
         
         return {
             'unread_notifications_count': unread_notifications.count(),
-            'recent_notifications': recent_notifications,
+            'recent_notifications': recent_unread_notifications,
             'has_unread_notifications': unread_notifications.exists(),
         }
     
