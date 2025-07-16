@@ -40,8 +40,15 @@ class InvitationForm(forms.ModelForm):
         fields = ["email", "role", "property", "apartment_unit", "rent_amount", 
                  "rent_payment_date", "lease_length_months", "all_properties"]
         widgets = {
-            'rent_payment_date': forms.NumberInput(attrs={'min': 1, 'max': 28}),
-            'rent_amount': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
+            'rent_payment_date': forms.NumberInput(attrs={'min': 1, 'max': 28, 'placeholder': 'Day of month (1-28)'}),
+            'rent_amount': forms.NumberInput(attrs={'step': '0.01', 'min': '0', 'placeholder': 'Monthly rent amount'}),
+        }
+        labels = {
+            'apartment_unit': 'Apartment Unit',
+            'rent_amount': 'Monthly Rent Amount',
+            'rent_payment_date': 'Rent Payment Day',
+            'lease_length_months': 'Lease Length',
+            'all_properties': 'Grant access to all properties'
         }
 
     def __init__(self, *args, **kwargs):
@@ -56,12 +63,8 @@ class InvitationForm(forms.ModelForm):
                            if choice[0] not in ['SUPERUSER', 'LANDLORD']]
             self.fields['role'].choices = role_choices
             
-            # Initially hide tenant/employee specific fields
-            self.fields['apartment_unit'].widget.attrs['style'] = 'display:none;'
-            self.fields['rent_amount'].widget.attrs['style'] = 'display:none;'
-            self.fields['rent_payment_date'].widget.attrs['style'] = 'display:none;'
-            self.fields['lease_length_months'].widget.attrs['style'] = 'display:none;'
-            self.fields['all_properties'].widget.attrs['style'] = 'display:none;'
+            # Add CSS classes for styling
+            self.fields['all_properties'].widget.attrs['class'] = 'mr-2'
             
     def clean(self):
         cleaned_data = super().clean()

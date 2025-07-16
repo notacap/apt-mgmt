@@ -4,12 +4,12 @@ from . import views
 app_name = 'financials'
 
 urlpatterns = [
-    # Payment Schedule URLs
-    path('payment-schedules/', views.payment_schedule_list, name='payment_schedule_list'),
-    path('payment-schedules/create/', views.create_payment_schedule, name='create_payment_schedule'),
-    path('payment-schedules/<int:pk>/', views.payment_schedule_detail, name='payment_schedule_detail'),
-    path('payment-schedules/<int:pk>/edit/', views.edit_payment_schedule, name='edit_payment_schedule'),
-    path('payment-schedules/<int:pk>/delete/', views.delete_payment_schedule, name='delete_payment_schedule'),
+    # Payment Schedule URLs - DISABLED (Not needed for current implementation)
+    # path('payment-schedules/', views.payment_schedule_list, name='payment_schedule_list'),
+    # path('payment-schedules/create/', views.create_payment_schedule, name='create_payment_schedule'),
+    # path('payment-schedules/<int:pk>/', views.payment_schedule_detail, name='payment_schedule_detail'),
+    # path('payment-schedules/<int:pk>/edit/', views.edit_payment_schedule, name='edit_payment_schedule'),
+    # path('payment-schedules/<int:pk>/delete/', views.delete_payment_schedule, name='delete_payment_schedule'),
     
     # Rent Payment URLs
     path('payments/', views.payment_list, name='payment_list'),
