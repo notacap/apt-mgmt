@@ -60,28 +60,82 @@
 
                 <!-- Date and Time -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Start Date & Time -->
                     <div>
-                        <label for="{{ form.start_datetime.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                             Start Date & Time *
                         </label>
-                        {{ form.start_datetime|add_form_control }}
-                        {% if form.start_datetime.errors %}
-                            <div class="mt-1 text-sm text-red-600 dark:text-red-400">
-                                {{ form.start_datetime.errors.0 }}
+                        <div class="space-y-3">
+                            <!-- Start Date -->
+                            <div>
+                                <label for="{{ form.start_date.id_for_label }}" class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Date</label>
+                                {{ form.start_date|add_form_control }}
+                                {% if form.start_date.errors %}
+                                    <div class="mt-1 text-sm text-red-600 dark:text-red-400">
+                                        {{ form.start_date.errors.0 }}
+                                    </div>
+                                {% endif %}
                             </div>
-                        {% endif %}
+                            <!-- Start Time -->
+                            <div class="grid grid-cols-3 gap-2">
+                                <div>
+                                    <label for="{{ form.start_hour.id_for_label }}" class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Hour</label>
+                                    {{ form.start_hour|add_form_control }}
+                                </div>
+                                <div>
+                                    <label for="{{ form.start_minute.id_for_label }}" class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Min</label>
+                                    {{ form.start_minute|add_form_control }}
+                                </div>
+                                <div>
+                                    <label for="{{ form.start_ampm.id_for_label }}" class="block text-xs text-gray-600 dark:text-gray-400 mb-1">AM/PM</label>
+                                    {{ form.start_ampm|add_form_control }}
+                                </div>
+                            </div>
+                            {% if form.start_hour.errors or form.start_minute.errors or form.start_ampm.errors %}
+                                <div class="mt-1 text-sm text-red-600 dark:text-red-400">
+                                    {{ form.start_hour.errors.0|default:form.start_minute.errors.0|default:form.start_ampm.errors.0 }}
+                                </div>
+                            {% endif %}
+                        </div>
                     </div>
                     
+                    <!-- End Date & Time -->
                     <div>
-                        <label for="{{ form.end_datetime.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                             End Date & Time *
                         </label>
-                        {{ form.end_datetime|add_form_control }}
-                        {% if form.end_datetime.errors %}
-                            <div class="mt-1 text-sm text-red-600 dark:text-red-400">
-                                {{ form.end_datetime.errors.0 }}
+                        <div class="space-y-3">
+                            <!-- End Date -->
+                            <div>
+                                <label for="{{ form.end_date.id_for_label }}" class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Date</label>
+                                {{ form.end_date|add_form_control }}
+                                {% if form.end_date.errors %}
+                                    <div class="mt-1 text-sm text-red-600 dark:text-red-400">
+                                        {{ form.end_date.errors.0 }}
+                                    </div>
+                                {% endif %}
                             </div>
-                        {% endif %}
+                            <!-- End Time -->
+                            <div class="grid grid-cols-3 gap-2">
+                                <div>
+                                    <label for="{{ form.end_hour.id_for_label }}" class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Hour</label>
+                                    {{ form.end_hour|add_form_control }}
+                                </div>
+                                <div>
+                                    <label for="{{ form.end_minute.id_for_label }}" class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Min</label>
+                                    {{ form.end_minute|add_form_control }}
+                                </div>
+                                <div>
+                                    <label for="{{ form.end_ampm.id_for_label }}" class="block text-xs text-gray-600 dark:text-gray-400 mb-1">AM/PM</label>
+                                    {{ form.end_ampm|add_form_control }}
+                                </div>
+                            </div>
+                            {% if form.end_hour.errors or form.end_minute.errors or form.end_ampm.errors %}
+                                <div class="mt-1 text-sm text-red-600 dark:text-red-400">
+                                    {{ form.end_hour.errors.0|default:form.end_minute.errors.0|default:form.end_ampm.errors.0 }}
+                                </div>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
 
@@ -173,13 +227,6 @@
                     {% endif %}
                 </div>
 
-                <!-- Privacy -->
-                <div class="flex items-center">
-                    {{ form.is_private|add_checkbox_class }}
-                    <label for="{{ form.is_private.id_for_label }}" class="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Private event (only visible to creator and assigned users)
-                    </label>
-                </div>
 
                 <!-- Form Errors -->
                 {% if form.non_field_errors %}

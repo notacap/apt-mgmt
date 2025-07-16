@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Event - {{ event.title }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    <div class="max-w-2xl mx-auto">
+        <!-- Header -->
+        <div class="mb-6">
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Delete Event</h1>
+            <p class="mt-2 text-gray-600 dark:text-gray-400">Are you sure you want to delete this event?</p>
+        </div>
+
+        <!-- Event Details Card -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 mb-6">
+            <div class="p-6">
+                <div class="space-y-4">
+                    <div>
+                        <h2 class="text-xl font-semibold text-gray-900 dark:text-white">{{ event.title }}</h2>
+                        <p class="text-gray-600 dark:text-gray-400">{{ event.description|default:"No description provided" }}</p>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <span class="font-medium text-gray-700 dark:text-gray-300">Event Type:</span>
+                            <span class="text-gray-600 dark:text-gray-400 ml-2">{{ event.get_event_type_display }}</span>
+                        </div>
+                        
+                        <div>
+                            <span class="font-medium text-gray-700 dark:text-gray-300">Property:</span>
+                            <span class="text-gray-600 dark:text-gray-400 ml-2">{{ event.property.name }}</span>
+                        </div>
+                        
+                        <div>
+                            <span class="font-medium text-gray-700 dark:text-gray-300">Start:</span>
+                            <span class="text-gray-600 dark:text-gray-400 ml-2">
+                                {% if event.is_all_day %}
+                                    {{ event.start_datetime|date:"M d, Y" }} (All Day)
+                                {% else %}
+                                    {{ event.start_datetime|date:"M d, Y g:i A" }}
+                                {% endif %}
+                            </span>
+                        </div>
+                        
+                        <div>
+                            <span class="font-medium text-gray-700 dark:text-gray-300">End:</span>
+                            <span class="text-gray-600 dark:text-gray-400 ml-2">
+                                {% if event.is_all_day %}
+                                    {{ event.end_datetime|date:"M d, Y" }} (All Day)
+                                {% else %}
+                                    {{ event.end_datetime|date:"M d, Y g:i A" }}
+                                {% endif %}
+                            </span>
+                        </div>
+                        
+                        {% if event.apartment_unit %}
+                        <div>
+                            <span class="font-medium text-gray-700 dark:text-gray-300">Unit:</span>
+                            <span class="text-gray-600 dark:text-gray-400 ml-2">{{ event.apartment_unit.unit_number }}</span>
+                        </div>
+                        {% endif %}
+                        
+                        {% if event.location_details %}
+                        <div>
+                            <span class="font-medium text-gray-700 dark:text-gray-300">Location:</span>
+                            <span class="text-gray-600 dark:text-gray-400 ml-2">{{ event.location_details }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    {% if event.assigned_to.exists %}
+                    <div>
+                        <span class="font-medium text-gray-700 dark:text-gray-300">Assigned to:</span>
+                        <div class="mt-1 flex flex-wrap gap-2">
+                            {% for user in event.assigned_to.all %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100">
+                                {{ user.get_full_name|default:user.username }}
+                            </span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Warning -->
+        <div class="bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 rounded-lg p-4 mb-6">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-medium text-red-800 dark:text-red-200">Warning</h3>
+                    <p class="mt-1 text-sm text-red-700 dark:text-red-300">
+                        This action cannot be undone. Once deleted, the event and all associated data will be permanently removed.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex justify-end space-x-4">
+            <a href="{% url 'events:event_detail' event.id %}" 
+               class="px-6 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 font-medium rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors duration-200">
+                Cancel
+            </a>
+            
+            <form method="post" class="inline">
+                {% csrf_token %}
+                <button type="submit" 
+                        class="px-6 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors duration-200">
+                    Delete Event
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

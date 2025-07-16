@@ -211,8 +211,8 @@ def create_event(request):
             if not can_user_manage_property(request.user, event.property):
                 return HttpResponseForbidden("You don't have permission to create events for this property.")
             
-            event.save()
-            form.save_m2m()  # Save many-to-many relationships
+            # Use form's save method to handle automatic privacy setting
+            event = form.save()
             
             # Create notifications for assigned users
             for assigned_user in event.assigned_to.all():

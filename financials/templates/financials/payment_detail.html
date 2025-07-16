@@ -1,0 +1,216 @@
+{% extends 'base.html' %}
+{% load form_tags %}
+
+{% block title %}{{ page_title }} - Apartment Management{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-4xl">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{{ page_title }}</h1>
+        <div class="flex space-x-2">
+            {% if user.role == 'TENANT' %}
+                <a href="{% url 'financials:tenant_payments' %}" class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">
+                    ← Back to My Payments
+                </a>
+            {% else %}
+                <a href="{% url 'financials:payment_list' %}" class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">
+                    ← Back to Payment List
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Payment Information -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Payment Information</h2>
+            
+            <div class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Due Date</p>
+                        <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ payment.due_date|date:"F d, Y" }}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Status</p>
+                        <div class="mt-1">
+                            {% if payment.status == 'PAID' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                    Paid
+                                </span>
+                            {% elif payment.status == 'PENDING' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                                    Pending
+                                </span>
+                            {% elif payment.status == 'OVERDUE' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                                    Overdue
+                                </span>
+                            {% elif payment.status == 'PARTIAL' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
+                                    Partial
+                                </span>
+                            {% elif payment.status == 'FAILED' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                                    Failed
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Amount Due</p>
+                            <p class="text-lg font-semibold text-gray-900 dark:text-white">${{ payment.amount_due }}</p>
+                        </div>
+                        {% if payment.late_fee > 0 %}
+                        <div>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Late Fee</p>
+                            <p class="text-lg font-semibold text-red-600 dark:text-red-400">${{ payment.late_fee }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mt-4 grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Total Amount Due</p>
+                            <p class="text-xl font-bold text-gray-900 dark:text-white">${{ payment.total_amount_due }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Amount Paid</p>
+                            <p class="text-xl font-bold text-green-600 dark:text-green-400">${{ payment.amount_paid }}</p>
+                        </div>
+                    </div>
+
+                    {% if payment.balance_remaining > 0 %}
+                    <div class="mt-4 p-4 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-md">
+                        <p class="text-sm text-orange-800 dark:text-orange-200">
+                            <strong>Remaining Balance:</strong> ${{ payment.balance_remaining }}
+                        </p>
+                    </div>
+                    {% endif %}
+                </div>
+
+                {% if payment.payment_date %}
+                <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Payment Date</p>
+                            <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ payment.payment_date|date:"F d, Y" }}</p>
+                        </div>
+                        {% if payment.payment_method %}
+                        <div>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Payment Method</p>
+                            <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ payment.get_payment_method_display }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    {% if payment.reference_number %}
+                    <div class="mt-4">
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Reference Number</p>
+                        <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ payment.reference_number }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                {% if payment.processed_by %}
+                <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
+                    <p class="text-sm text-gray-600 dark:text-gray-400">Processed By</p>
+                    <p class="text-lg font-semibold text-gray-900 dark:text-white">
+                        {{ payment.processed_by.get_full_name|default:payment.processed_by.username }}
+                    </p>
+                </div>
+                {% endif %}
+
+                {% if payment.notes %}
+                <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
+                    <p class="text-sm text-gray-600 dark:text-gray-400">Notes</p>
+                    <p class="text-gray-900 dark:text-white mt-2">{{ payment.notes }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Tenant/Schedule Information -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Schedule Information</h2>
+            
+            <div class="space-y-4">
+                <div>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">Tenant</p>
+                    <p class="text-lg font-semibold text-gray-900 dark:text-white">
+                        {{ payment.payment_schedule.tenant.get_full_name|default:payment.payment_schedule.tenant.username }}
+                    </p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">{{ payment.payment_schedule.tenant.email }}</p>
+                </div>
+
+                <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
+                    <p class="text-sm text-gray-600 dark:text-gray-400">Apartment Unit</p>
+                    <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ payment.payment_schedule.apartment_unit }}</p>
+                </div>
+
+                <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Monthly Rent</p>
+                            <p class="text-lg font-semibold text-gray-900 dark:text-white">${{ payment.payment_schedule.rent_amount }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Frequency</p>
+                            <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ payment.payment_schedule.get_frequency_display }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
+                    <p class="text-sm text-gray-600 dark:text-gray-400">Schedule Period</p>
+                    <p class="text-lg font-semibold text-gray-900 dark:text-white">
+                        {{ payment.payment_schedule.start_date|date:"M d, Y" }}
+                        {% if payment.payment_schedule.end_date %}
+                            - {{ payment.payment_schedule.end_date|date:"M d, Y" }}
+                        {% else %}
+                            - Ongoing
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="mt-6 flex space-x-3">
+                {% if user.role in 'LANDLORD,EMPLOYEE' and payment.status in 'PENDING,PARTIAL' %}
+                    <a href="{% url 'financials:process_payment' payment.pk %}" 
+                       class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        Process Payment
+                    </a>
+                {% endif %}
+
+                {% if user.role == 'TENANT' and payment.status in 'PENDING,OVERDUE,PARTIAL' %}
+                    <a href="{% url 'financials:tenant_make_payment' payment.pk %}" 
+                       class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"/>
+                        </svg>
+                        Make Payment
+                    </a>
+                {% endif %}
+
+                {% if payment.status == 'PAID' %}
+                    <button class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        Download Receipt
+                    </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

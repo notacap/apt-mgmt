@@ -1,23 +1,54 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+from datetime import datetime, time
 from .models import CalendarEvent, WorkSchedule
 from properties.models import Property, ApartmentUnit
 from users.models import User
 from maintenance.models import MaintenanceRequest
 
 class CalendarEventForm(forms.ModelForm):
+    # Custom fields for separate date and time inputs
+    start_date = forms.DateField(
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-input'})
+    )
+    start_hour = forms.ChoiceField(
+        choices=[(i, f'{i:02d}') for i in range(1, 13)],
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    start_minute = forms.ChoiceField(
+        choices=[(0, '00'), (15, '15'), (30, '30'), (45, '45')],
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    start_ampm = forms.ChoiceField(
+        choices=[('AM', 'AM'), ('PM', 'PM')],
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    
+    end_date = forms.DateField(
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-input'})
+    )
+    end_hour = forms.ChoiceField(
+        choices=[(i, f'{i:02d}') for i in range(1, 13)],
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    end_minute = forms.ChoiceField(
+        choices=[(0, '00'), (15, '15'), (30, '30'), (45, '45')],
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    end_ampm = forms.ChoiceField(
+        choices=[('AM', 'AM'), ('PM', 'PM')],
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+
     class Meta:
         model = CalendarEvent
         fields = [
-            'title', 'description', 'event_type',
-            'start_datetime', 'end_datetime', 'is_all_day',
+            'title', 'description', 'event_type', 'is_all_day',
             'property', 'apartment_unit', 'location_details',
-            'assigned_to', 'maintenance_request', 'is_private'
+            'assigned_to', 'maintenance_request'
         ]
         widgets = {
-            'start_datetime': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-input'}),
-            'end_datetime': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-input'}),
             'description': forms.Textarea(attrs={'rows': 4, 'class': 'form-textarea'}),
             'location_details': forms.TextInput(attrs={'class': 'form-input'}),
             'assigned_to': forms.CheckboxSelectMultiple(),
@@ -68,13 +99,79 @@ class CalendarEventForm(forms.ModelForm):
                 pass
         elif self.instance.pk and self.instance.property:
             self.fields['apartment_unit'].queryset = self.instance.property.units.all()
+        
+        # Populate datetime fields from existing instance
+        if self.instance.pk:
+            start_dt = self.instance.start_datetime
+            end_dt = self.instance.end_datetime
+            
+            if start_dt:
+                self.fields['start_date'].initial = start_dt.date()
+                hour_12 = start_dt.hour % 12
+                if hour_12 == 0:
+                    hour_12 = 12
+                self.fields['start_hour'].initial = hour_12
+                self.fields['start_minute'].initial = (start_dt.minute // 15) * 15  # Round to nearest 15
+                self.fields['start_ampm'].initial = 'AM' if start_dt.hour < 12 else 'PM'
+            
+            if end_dt:
+                self.fields['end_date'].initial = end_dt.date()
+                hour_12 = end_dt.hour % 12
+                if hour_12 == 0:
+                    hour_12 = 12
+                self.fields['end_hour'].initial = hour_12
+                self.fields['end_minute'].initial = (end_dt.minute // 15) * 15  # Round to nearest 15
+                self.fields['end_ampm'].initial = 'AM' if end_dt.hour < 12 else 'PM'
 
     def clean(self):
         cleaned_data = super().clean()
-        start_datetime = cleaned_data.get('start_datetime')
-        end_datetime = cleaned_data.get('end_datetime')
+        
+        # Get separate datetime components
+        start_date = cleaned_data.get('start_date')
+        start_hour = cleaned_data.get('start_hour')
+        start_minute = cleaned_data.get('start_minute')
+        start_ampm = cleaned_data.get('start_ampm')
+        
+        end_date = cleaned_data.get('end_date')
+        end_hour = cleaned_data.get('end_hour')
+        end_minute = cleaned_data.get('end_minute')
+        end_ampm = cleaned_data.get('end_ampm')
+        
         is_all_day = cleaned_data.get('is_all_day')
+        
+        # Convert separate components to datetime objects
+        start_datetime = None
+        end_datetime = None
+        
+        if start_date and start_hour is not None and start_minute is not None and start_ampm:
+            try:
+                # Convert 12-hour to 24-hour format
+                hour_24 = int(start_hour)
+                if start_ampm == 'PM' and hour_24 != 12:
+                    hour_24 += 12
+                elif start_ampm == 'AM' and hour_24 == 12:
+                    hour_24 = 0
+                
+                start_datetime = datetime.combine(start_date, time(hour_24, int(start_minute)))
+                cleaned_data['start_datetime'] = start_datetime
+            except (ValueError, TypeError):
+                raise ValidationError('Invalid start time.')
+        
+        if end_date and end_hour is not None and end_minute is not None and end_ampm:
+            try:
+                # Convert 12-hour to 24-hour format
+                hour_24 = int(end_hour)
+                if end_ampm == 'PM' and hour_24 != 12:
+                    hour_24 += 12
+                elif end_ampm == 'AM' and hour_24 == 12:
+                    hour_24 = 0
+                
+                end_datetime = datetime.combine(end_date, time(hour_24, int(end_minute)))
+                cleaned_data['end_datetime'] = end_datetime
+            except (ValueError, TypeError):
+                raise ValidationError('Invalid end time.')
 
+        # Validate datetime range
         if start_datetime and end_datetime:
             if start_datetime >= end_datetime:
                 raise ValidationError('End time must be after start time.')
@@ -86,6 +183,23 @@ class CalendarEventForm(forms.ModelForm):
                     raise ValidationError('All-day events must span at least one full day.')
 
         return cleaned_data
+    
+    def save(self, commit=True):
+        event = super().save(commit=False)
+        
+        if commit:
+            event.save()
+            self.save_m2m()
+            
+            # Automatically set privacy based on assignments
+            # If users are assigned, the event should be private
+            if event.assigned_to.exists():
+                event.is_private = True
+            else:
+                event.is_private = False
+            event.save()
+            
+        return event
 
 class WorkScheduleForm(forms.ModelForm):
     class Meta:
