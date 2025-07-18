@@ -4,26 +4,146 @@
 {% block title %}Accept Invitation{% endblock %}
 
 {% block content %}
-<div class="container mx-auto max-w-lg">
-    <h1 class="text-3xl font-bold mb-6 text-center">Create Your Account</h1>
-    <p class="text-center mb-6 text-gray-600 dark:text-gray-400">You've been invited to join! Just set your username and password below.</p>
-    <form method="post" class="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-lg space-y-6">
+<div class="container mx-auto max-w-2xl">
+    <div class="text-center mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Create Your Account</h1>
+        <p class="mt-2 text-gray-600 dark:text-gray-400">Complete your profile to finish setting up your account</p>
+    </div>
+    
+    <form method="post" class="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-lg">
         {% csrf_token %}
-
-        {% for field in form %}
-            <div>
-                <label for="{{ field.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">{{ field.label }}</label>
-                {{ field|addclass:"w-full p-3 bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" }}
-                {% if field.help_text %}
-                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ field.help_text }}</p>
-                {% endif %}
-                {% for error in field.errors %}
-                    <p class="mt-2 text-xs text-red-600 dark:text-red-400">{{ error }}</p>
+        
+        <!-- Account Information Section -->
+        <div class="mb-8">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 border-b border-gray-200 dark:border-gray-700 pb-2">
+                Account Information
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Username -->
+                <div class="md:col-span-2">
+                    <label for="{{ form.username.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">{{ form.username.label }}</label>
+                    {{ form.username|add_form_control }}
+                    {% if form.username.help_text %}
+                        <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ form.username.help_text }}</p>
+                    {% endif %}
+                    {% for error in form.username.errors %}
+                        <p class="mt-2 text-xs text-red-600 dark:text-red-400">{{ error }}</p>
+                    {% endfor %}
+                </div>
+                
+                <!-- Password -->
+                <div>
+                    <label for="{{ form.password.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">{{ form.password.label }}</label>
+                    {{ form.password|add_form_control }}
+                    {% if form.password.help_text %}
+                        <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ form.password.help_text }}</p>
+                    {% endif %}
+                    {% for error in form.password.errors %}
+                        <p class="mt-2 text-xs text-red-600 dark:text-red-400">{{ error }}</p>
+                    {% endfor %}
+                </div>
+                
+                <!-- Confirm Password -->
+                <div>
+                    <label for="{{ form.confirm_password.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">{{ form.confirm_password.label }}</label>
+                    {{ form.confirm_password|add_form_control }}
+                    {% if form.confirm_password.help_text %}
+                        <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ form.confirm_password.help_text }}</p>
+                    {% endif %}
+                    {% for error in form.confirm_password.errors %}
+                        <p class="mt-2 text-xs text-red-600 dark:text-red-400">{{ error }}</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Personal Information Section -->
+        <div class="mb-8">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 border-b border-gray-200 dark:border-gray-700 pb-2">
+                Personal Information
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- First Name -->
+                <div>
+                    <label for="{{ form.first_name.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">{{ form.first_name.label }} <span class="text-red-500">*</span></label>
+                    {{ form.first_name|add_form_control }}
+                    {% for error in form.first_name.errors %}
+                        <p class="mt-2 text-xs text-red-600 dark:text-red-400">{{ error }}</p>
+                    {% endfor %}
+                </div>
+                
+                <!-- Last Name -->
+                <div>
+                    <label for="{{ form.last_name.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">{{ form.last_name.label }} <span class="text-red-500">*</span></label>
+                    {{ form.last_name|add_form_control }}
+                    {% for error in form.last_name.errors %}
+                        <p class="mt-2 text-xs text-red-600 dark:text-red-400">{{ error }}</p>
+                    {% endfor %}
+                </div>
+                
+                <!-- Phone Number -->
+                <div class="md:col-span-2">
+                    <label for="{{ form.phone_number.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">{{ form.phone_number.label }} <span class="text-red-500">*</span></label>
+                    {{ form.phone_number|add_form_control }}
+                    {% for error in form.phone_number.errors %}
+                        <p class="mt-2 text-xs text-red-600 dark:text-red-400">{{ error }}</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Emergency Contact Section -->
+        <div class="mb-8">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 border-b border-gray-200 dark:border-gray-700 pb-2">
+                Emergency Contact Information
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Emergency Contact Name -->
+                <div class="md:col-span-2">
+                    <label for="{{ form.emergency_contact_name.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">{{ form.emergency_contact_name.label }} <span class="text-red-500">*</span></label>
+                    {{ form.emergency_contact_name|add_form_control }}
+                    {% for error in form.emergency_contact_name.errors %}
+                        <p class="mt-2 text-xs text-red-600 dark:text-red-400">{{ error }}</p>
+                    {% endfor %}
+                </div>
+                
+                <!-- Emergency Contact Phone -->
+                <div>
+                    <label for="{{ form.emergency_contact_phone.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">{{ form.emergency_contact_phone.label }} <span class="text-red-500">*</span></label>
+                    {{ form.emergency_contact_phone|add_form_control }}
+                    {% for error in form.emergency_contact_phone.errors %}
+                        <p class="mt-2 text-xs text-red-600 dark:text-red-400">{{ error }}</p>
+                    {% endfor %}
+                </div>
+                
+                <!-- Emergency Contact Relationship -->
+                <div>
+                    <label for="{{ form.emergency_contact_relationship.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">{{ form.emergency_contact_relationship.label }} <span class="text-red-500">*</span></label>
+                    {{ form.emergency_contact_relationship|add_form_control }}
+                    {% for error in form.emergency_contact_relationship.errors %}
+                        <p class="mt-2 text-xs text-red-600 dark:text-red-400">{{ error }}</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Form-level errors -->
+        {% if form.non_field_errors %}
+            <div class="mb-6">
+                {% for error in form.non_field_errors %}
+                    <p class="text-red-600 dark:text-red-400 text-sm">{{ error }}</p>
                 {% endfor %}
             </div>
-        {% endfor %}
-
-        <button type="submit" class="w-full bg-blue-600 text-white p-3 rounded-lg font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800">Create Account</button>
+        {% endif %}
+        
+        <div class="flex items-center justify-between pt-6 border-t border-gray-200 dark:border-gray-700">
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+                <span class="text-red-500">*</span> Required fields
+            </p>
+            <button type="submit" class="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors">
+                Create Account
+            </button>
+        </div>
     </form>
 </div>
-{% endblock %} 
+{% endblock %}

@@ -5,8 +5,6 @@ from .models import PaymentSchedule, RentPayment, ExpenseRecord, PaymentReceipt
 User = get_user_model()
 
 
-# Note: PaymentScheduleForm is currently not used as payment scheduling interface is disabled.
-# Payment schedules can be managed through Django admin if needed.
 class PaymentScheduleForm(forms.ModelForm):
     class Meta:
         model = PaymentSchedule

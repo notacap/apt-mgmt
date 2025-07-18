@@ -16,6 +16,14 @@ class User(AbstractUser):
     # For employees with all_properties access, property field will be null
     # and we'll check company-wide access in permission checks
     
+    # Contact information
+    phone_number = models.CharField(max_length=20, blank=True, null=True)
+    
+    # Emergency contact information
+    emergency_contact_name = models.CharField(max_length=100, blank=True, null=True)
+    emergency_contact_phone = models.CharField(max_length=20, blank=True, null=True)
+    emergency_contact_relationship = models.CharField(max_length=50, blank=True, null=True)
+    
     def has_property_access(self, property):
         """Check if user has access to a specific property"""
         if self.role == self.Role.SUPERUSER:

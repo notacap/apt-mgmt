@@ -222,20 +222,60 @@
     </div>
     {% else %}
     <!-- No Payment Due -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 text-center">
-        <svg class="mx-auto h-12 w-12 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-        </svg>
-        <h3 class="mt-4 text-lg font-medium text-gray-900 dark:text-white">No Payments Due</h3>
-        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            You don't have any outstanding payments at this time.
-        </p>
-        <div class="mt-6">
-            <a href="{% url 'financials:tenant_payments' %}" 
-               class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                View Payment History
-            </a>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 text-center">
+                <svg class="mx-auto h-12 w-12 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <h3 class="mt-4 text-lg font-medium text-gray-900 dark:text-white">No Payments Due</h3>
+                <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                    You don't have any outstanding payments at this time.
+                </p>
+                <div class="mt-6">
+                    <a href="{% url 'financials:tenant_payments' %}" 
+                       class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        View Payment History
+                    </a>
+                </div>
+            </div>
         </div>
+        
+        <!-- Payment Schedule Info -->
+        {% if payment_schedule %}
+        <div class="lg:col-span-1">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <h3 class="text-lg font-medium mb-4 text-gray-900 dark:text-white">Payment Schedule</h3>
+                <div class="space-y-4">
+                    <div>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Monthly Rent</p>
+                        <p class="text-xl font-bold text-gray-900 dark:text-white">${{ payment_schedule.rent_amount }}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Payment Frequency</p>
+                        <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ payment_schedule.get_frequency_display }}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Property</p>
+                        <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ payment_schedule.apartment_unit.property.name }}</p>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Unit {{ payment_schedule.apartment_unit.unit_number }}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Schedule Status</p>
+                        {% if payment_schedule.is_active %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                Active
+                            </span>
+                        {% else %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
+                                Inactive
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
     </div>
     {% endif %}
 </div>

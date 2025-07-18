@@ -37,16 +37,9 @@ class InvitationForm(forms.ModelForm):
     
     class Meta:
         model = Invitation
-        fields = ["email", "role", "property", "apartment_unit", "rent_amount", 
-                 "rent_payment_date", "lease_length_months", "all_properties"]
-        widgets = {
-            'rent_payment_date': forms.NumberInput(attrs={'min': 1, 'max': 28, 'placeholder': 'Day of month (1-28)'}),
-            'rent_amount': forms.NumberInput(attrs={'step': '0.01', 'min': '0', 'placeholder': 'Monthly rent amount'}),
-        }
+        fields = ["email", "role", "property", "apartment_unit", "lease_length_months", "all_properties"]
         labels = {
             'apartment_unit': 'Apartment Unit',
-            'rent_amount': 'Monthly Rent Amount',
-            'rent_payment_date': 'Rent Payment Day',
             'lease_length_months': 'Lease Length',
             'all_properties': 'Grant access to all properties'
         }
@@ -57,6 +50,13 @@ class InvitationForm(forms.ModelForm):
         if user:
             # Set property queryset based on user's company
             self.fields['property'].queryset = Property.objects.filter(company=user.company)
+            
+            # Set apartment unit queryset to include all units in user's company
+            # This allows the form validation to pass
+            self.fields['apartment_unit'].queryset = ApartmentUnit.objects.filter(
+                property__company=user.company,
+                is_occupied=False
+            )
             
             # Limit role choices - remove SUPERUSER and LANDLORD
             role_choices = [(choice[0], choice[1]) for choice in User.Role.choices 
@@ -73,21 +73,24 @@ class InvitationForm(forms.ModelForm):
         
         if role == 'TENANT':
             # Validate tenant-specific fields
-            if not cleaned_data.get('apartment_unit'):
+            apartment_unit = cleaned_data.get('apartment_unit')
+            if not apartment_unit:
                 raise forms.ValidationError("Apartment unit is required for tenant invitations.")
-            if not cleaned_data.get('rent_amount'):
-                raise forms.ValidationError("Rent amount is required for tenant invitations.")
-            if not cleaned_data.get('rent_payment_date'):
-                raise forms.ValidationError("Rent payment date is required for tenant invitations.")
             if not cleaned_data.get('lease_length_months'):
                 raise forms.ValidationError("Lease length is required for tenant invitations.")
+            
+            # Validate that apartment unit belongs to selected property
+            if property_obj and apartment_unit:
+                if apartment_unit.property != property_obj:
+                    raise forms.ValidationError("Selected apartment unit does not belong to the selected property.")
+                if apartment_unit.is_occupied:
+                    raise forms.ValidationError("Selected apartment unit is already occupied.")
+            
             # Clear employee-specific fields
             cleaned_data['all_properties'] = False
         elif role == 'EMPLOYEE':
             # Clear tenant-specific fields
             cleaned_data['apartment_unit'] = None
-            cleaned_data['rent_amount'] = None
-            cleaned_data['rent_payment_date'] = None
             cleaned_data['lease_length_months'] = None
             # If all_properties is True, property can be None
             if cleaned_data.get('all_properties') and not property_obj:
@@ -101,6 +104,50 @@ class UserProfileForm(forms.ModelForm):
         fields = ["first_name", "last_name", "email"]
 
 class InvitationAcceptanceForm(forms.ModelForm):
+    password = forms.CharField(
+        widget=forms.PasswordInput(),
+        help_text="Create a secure password for your account"
+    )
+    confirm_password = forms.CharField(
+        widget=forms.PasswordInput(),
+        help_text="Re-enter your password to confirm"
+    )
+    
     class Meta:
         model = User
-        fields = ["username", "password"] 
+        fields = [
+            "username", "password", "first_name", "last_name", 
+            "phone_number", "emergency_contact_name", 
+            "emergency_contact_phone", "emergency_contact_relationship"
+        ]
+        widgets = {
+            'phone_number': forms.TextInput(attrs={'placeholder': '(555) 123-4567'}),
+            'emergency_contact_phone': forms.TextInput(attrs={'placeholder': '(555) 123-4567'}),
+            'emergency_contact_relationship': forms.TextInput(attrs={'placeholder': 'e.g., Spouse, Parent, Sibling, Friend'}),
+        }
+        labels = {
+            'phone_number': 'Phone Number',
+            'emergency_contact_name': 'Emergency Contact Name',
+            'emergency_contact_phone': 'Emergency Contact Phone',
+            'emergency_contact_relationship': 'Relationship to Emergency Contact',
+        }
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        password = cleaned_data.get('password')
+        confirm_password = cleaned_data.get('confirm_password')
+        
+        if password and confirm_password:
+            if password != confirm_password:
+                raise forms.ValidationError("Passwords do not match.")
+        
+        # Validate required fields
+        required_fields = ['first_name', 'last_name', 'phone_number', 
+                          'emergency_contact_name', 'emergency_contact_phone', 
+                          'emergency_contact_relationship']
+        
+        for field_name in required_fields:
+            if not cleaned_data.get(field_name):
+                self.add_error(field_name, "This field is required.")
+        
+        return cleaned_data 

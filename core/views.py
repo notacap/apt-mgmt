@@ -15,6 +15,8 @@ from financials.models import PaymentSchedule
 from datetime import timedelta, date
 from django.utils import timezone
 from django.http import JsonResponse
+from django.core.mail import send_mail
+from django.conf import settings
 
 # Create your views here.
 
@@ -326,7 +328,44 @@ def send_invitation(request):
             invitation.invited_by = request.user
             invitation.company = request.user.company
             invitation.save()
-            messages.success(request, "Invitation sent successfully.")
+            
+            # Send invitation email
+            invitation_url = request.build_absolute_uri(f"/accept-invitation/{invitation.token}/")
+            
+            subject = f"Invitation to join {invitation.company.name}"
+            
+            if invitation.role == 'TENANT':
+                role_info = f"as a Tenant for {invitation.property.name}"
+                if invitation.apartment_unit:
+                    role_info += f", Unit {invitation.apartment_unit.unit_number}"
+            elif invitation.role == 'EMPLOYEE':
+                if invitation.all_properties:
+                    role_info = f"as an Employee with access to all properties"
+                else:
+                    role_info = f"as an Employee for {invitation.property.name}"
+            else:
+                role_info = f"as {invitation.get_role_display()}"
+            
+            message = f"""
+You have been invited to join {invitation.company.name} {role_info}.
+
+To accept this invitation and create your account, please click the link below:
+{invitation_url}
+
+This invitation was sent by {invitation.invited_by.get_full_name() or invitation.invited_by.username}.
+
+If you did not expect this invitation, you can safely ignore this email.
+            """
+            
+            send_mail(
+                subject,
+                message,
+                settings.DEFAULT_FROM_EMAIL,
+                [invitation.email],
+                fail_silently=False,
+            )
+            
+            messages.success(request, f"Invitation sent successfully to {invitation.email}.")
             return redirect("core:index")
     else:
         form = InvitationForm(user=request.user)
@@ -361,8 +400,8 @@ def accept_invitation(request, token):
                 invitation.apartment_unit.is_occupied = True
                 invitation.apartment_unit.save()
                 
-                # Create payment schedule
-                if invitation.rent_amount and invitation.rent_payment_date and invitation.lease_length_months:
+                # Create payment schedule using apartment unit's rent amount
+                if invitation.lease_length_months:
                     start_date = date.today()
                     # Calculate end date based on lease length
                     year = start_date.year
@@ -375,9 +414,9 @@ def accept_invitation(request, token):
                     PaymentSchedule.objects.create(
                         tenant=user,
                         apartment_unit=invitation.apartment_unit,
-                        rent_amount=invitation.rent_amount,
+                        rent_amount=invitation.apartment_unit.rent_amount,  # Use apartment unit's rent amount
                         frequency='MONTHLY',
-                        payment_day=invitation.rent_payment_date,
+                        payment_day=1,  # Default to 1st of month - can be updated later in payment schedule management
                         start_date=start_date,
                         end_date=end_date,
                         is_active=True
@@ -435,7 +474,7 @@ def get_available_units(request, property_id):
         property_id=property_id,
         property__company=request.user.company,
         is_occupied=False
-    ).values('id', 'unit_number', 'bedrooms', 'bathrooms')
+    ).values('id', 'unit_number', 'bedrooms', 'bathrooms', 'rent_amount')
     
     return JsonResponse({'units': list(units)})
 

@@ -12,21 +12,51 @@
     {% if schedule %}
     <!-- Payment Schedule Info -->
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
-        <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Payment Schedule</h2>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">My Payment Schedule</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div>
-                <p class="text-sm text-gray-600 dark:text-gray-400">Rent Amount</p>
-                <p class="text-lg font-semibold text-gray-900 dark:text-white">${{ schedule.rent_amount }}</p>
+                <p class="text-sm text-gray-600 dark:text-gray-400">Monthly Rent</p>
+                <p class="text-2xl font-bold text-gray-900 dark:text-white">${{ schedule.rent_amount }}</p>
             </div>
             <div>
                 <p class="text-sm text-gray-600 dark:text-gray-400">Payment Frequency</p>
                 <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ schedule.get_frequency_display }}</p>
             </div>
             <div>
-                <p class="text-sm text-gray-600 dark:text-gray-400">Unit</p>
-                <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ schedule.apartment_unit }}</p>
+                <p class="text-sm text-gray-600 dark:text-gray-400">Property & Unit</p>
+                <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ schedule.apartment_unit.property.name }}</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Unit {{ schedule.apartment_unit.unit_number }}</p>
+            </div>
+            <div>
+                <p class="text-sm text-gray-600 dark:text-gray-400">Schedule Started</p>
+                <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ schedule.start_date|date:"M d, Y" }}</p>
+                {% if schedule.end_date %}
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Ends {{ schedule.end_date|date:"M d, Y" }}</p>
+                {% else %}
+                    <p class="text-sm text-green-600 dark:text-green-400">Active</p>
+                {% endif %}
             </div>
         </div>
+        
+        <!-- Next Payment Due -->
+        {% if payments %}
+            {% with payments.0 as next_payment %}
+                {% if next_payment.status in 'PENDING,OVERDUE,PARTIAL' %}
+                <div class="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-blue-800 dark:text-blue-200">Next Payment Due</p>
+                            <p class="text-xl font-bold text-blue-900 dark:text-blue-100">${{ next_payment.total_amount_due }} - {{ next_payment.due_date|date:"F d, Y" }}</p>
+                        </div>
+                        <a href="{% url 'financials:payment_portal' %}" 
+                           class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            Pay Now
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+            {% endwith %}
+        {% endif %}
     </div>
     {% endif %}
 

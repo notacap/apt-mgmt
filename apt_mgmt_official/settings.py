@@ -144,3 +144,17 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 LOGIN_REDIRECT_URL = "core:dashboard_redirect"
 LOGIN_URL = "login"
+
+# Email Configuration
+# For development - emails will be printed to console
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# For production - uncomment and configure these settings:
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# EMAIL_HOST = 'smtp.gmail.com'  # Or your email provider's SMTP server
+# EMAIL_PORT = 587
+# EMAIL_USE_TLS = True
+# EMAIL_HOST_USER = 'your-email@gmail.com'
+# EMAIL_HOST_PASSWORD = 'your-app-password'  # Use app password for Gmail
+DEFAULT_FROM_EMAIL = 'noreply@yourcompany.com'
+SERVER_EMAIL = 'server@yourcompany.com'

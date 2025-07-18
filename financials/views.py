@@ -16,13 +16,12 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 
 
-# ===== PAYMENT SCHEDULING VIEWS - DISABLED =====
-# These views are currently disabled as payment scheduling is not needed for the current implementation.
-# Payment schedules can be created and managed directly through Django admin if needed.
+# ===== PAYMENT SCHEDULING VIEWS =====
+# These views allow landlords and employees to create and manage payment schedules for tenants.
 
 @login_required
 def payment_schedule_list(request):
-    """List all payment schedules for landlords/employees - DISABLED"""
+    """List all payment schedules for landlords/employees"""
     if request.user.role not in ['LANDLORD', 'EMPLOYEE']:
         messages.error(request, "You don't have permission to access this page.")
         return redirect('core:dashboard_redirect')

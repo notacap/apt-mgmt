@@ -4,16 +4,20 @@ from .models import PaymentSchedule, RentPayment, ExpenseRecord, PaymentReceipt
 
 @admin.register(PaymentSchedule)
 class PaymentScheduleAdmin(admin.ModelAdmin):
-    list_display = ['tenant', 'apartment_unit', 'rent_amount', 'frequency', 'start_date', 'is_active']
+    list_display = ['tenant', 'apartment_unit', 'rent_amount', 'unit_rent_display', 'frequency', 'start_date', 'is_active']
     list_filter = ['frequency', 'is_active', 'created_at']
     search_fields = ['tenant__username', 'tenant__email', 'apartment_unit__unit_number']
-    readonly_fields = ['created_at', 'updated_at']
+    readonly_fields = ['created_at', 'updated_at', 'unit_rent_display']
     
     fieldsets = (
-        (None, {
-            'fields': ('tenant', 'apartment_unit', 'rent_amount', 'frequency')
+        ('Tenant & Unit', {
+            'fields': ('tenant', 'apartment_unit', 'unit_rent_display')
         }),
-        ('Schedule', {
+        ('Payment Details', {
+            'fields': ('rent_amount', 'frequency', 'payment_day'),
+            'description': 'Rent amount will default to the unit rent if left blank.'
+        }),
+        ('Schedule Period', {
             'fields': ('start_date', 'end_date', 'is_active')
         }),
         ('Timestamps', {
@@ -21,6 +25,14 @@ class PaymentScheduleAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+    
+    def unit_rent_display(self, obj):
+        """Display the current rent amount set on the apartment unit"""
+        if obj.apartment_unit:
+            return f"${obj.apartment_unit.rent_amount}"
+        return "Select unit first"
+    unit_rent_display.short_description = "Unit's Current Rent"
+    unit_rent_display.admin_order_field = 'apartment_unit__rent_amount'
 
 
 @admin.register(RentPayment)

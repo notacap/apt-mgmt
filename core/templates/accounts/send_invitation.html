@@ -73,30 +73,6 @@
                 {% endfor %}
             </div>
 
-            <!-- Rent Amount Field -->
-            <div>
-                <label for="{{ form.rent_amount.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">{{ form.rent_amount.label }}</label>
-                {{ form.rent_amount|add_form_control }}
-                {% if form.rent_amount.help_text %}
-                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ form.rent_amount.help_text }}</p>
-                {% endif %}
-                {% for error in form.rent_amount.errors %}
-                    <p class="mt-2 text-xs text-red-600 dark:text-red-400">{{ error }}</p>
-                {% endfor %}
-            </div>
-
-            <!-- Rent Payment Date Field -->
-            <div>
-                <label for="{{ form.rent_payment_date.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">{{ form.rent_payment_date.label }}</label>
-                {{ form.rent_payment_date|add_form_control }}
-                {% if form.rent_payment_date.help_text %}
-                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ form.rent_payment_date.help_text }}</p>
-                {% endif %}
-                {% for error in form.rent_payment_date.errors %}
-                    <p class="mt-2 text-xs text-red-600 dark:text-red-400">{{ error }}</p>
-                {% endfor %}
-            </div>
-
             <!-- Lease Length Field -->
             <div>
                 <label for="{{ form.lease_length_months.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">{{ form.lease_length_months.label }}</label>
@@ -138,7 +114,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     data.units.forEach(unit => {
                         const option = document.createElement('option');
                         option.value = unit.id;
-                        option.textContent = `Unit ${unit.unit_number} (${unit.bedrooms}BR/${unit.bathrooms}BA)`;
+                        option.textContent = `Unit ${unit.unit_number} - $${unit.rent_amount}/month (${unit.bedrooms}BR/${unit.bathrooms}BA)`;
                         apartmentUnitField.appendChild(option);
                     });
                 })

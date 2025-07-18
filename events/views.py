@@ -170,10 +170,12 @@ def get_user_events(user, start_date, end_date):
         )
     else:  # Tenant
         # Tenants see events in their property or assigned to them
+        # Also include maintenance events for their own maintenance requests
         events = events.filter(
             Q(property=user.property, is_private=False) |
             Q(created_by=user) |
-            Q(assigned_to=user)
+            Q(assigned_to=user) |
+            Q(maintenance_request__tenant=user)  # Show maintenance events for their own requests
         )
     
     return events.distinct()

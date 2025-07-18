@@ -192,6 +192,46 @@ def maintenance_update_status(request, pk):
                     new_status=maintenance_request.status
                 )
                 
+                # Create calendar event if status changed to SCHEDULED and scheduled_date is set
+                if (maintenance_request.status == MaintenanceRequest.Status.SCHEDULED and 
+                    maintenance_request.scheduled_date):
+                    from events.models import CalendarEvent
+                    from django.utils import timezone
+                    
+                    # Check if calendar event already exists for this maintenance request
+                    existing_event = CalendarEvent.objects.filter(
+                        maintenance_request=maintenance_request
+                    ).first()
+                    
+                    if not existing_event:
+                        # Create calendar event
+                        calendar_event = CalendarEvent.objects.create(
+                            title=f"Maintenance: {maintenance_request.title}",
+                            description=f"Scheduled maintenance for {maintenance_request.property}" + 
+                                      (f" - {maintenance_request.apartment_unit}" if maintenance_request.apartment_unit else "") +
+                                      f"\n\nDescription: {maintenance_request.description}" +
+                                      (f"\nLocation: {maintenance_request.location_details}" if maintenance_request.location_details else ""),
+                            event_type=CalendarEvent.EventType.MAINTENANCE,
+                            priority=CalendarEvent.Priority.HIGH if maintenance_request.priority == MaintenanceRequest.Priority.EMERGENCY 
+                                   else CalendarEvent.Priority.MEDIUM,
+                            start_datetime=maintenance_request.scheduled_date,
+                            end_datetime=maintenance_request.estimated_completion or 
+                                       (maintenance_request.scheduled_date + timezone.timedelta(hours=2)),
+                            property=maintenance_request.property,
+                            apartment_unit=maintenance_request.apartment_unit,
+                            location_details=maintenance_request.location_details,
+                            created_by=request.user,
+                            maintenance_request=maintenance_request,
+                            is_private=False  # Visible to landlords, employees, and requesting tenant
+                        )
+                        
+                        # Assign the tenant who created the maintenance request to the calendar event
+                        calendar_event.assigned_to.add(maintenance_request.tenant)
+                        
+                        # Also assign the maintenance worker if one is assigned
+                        if maintenance_request.assigned_to:
+                            calendar_event.assigned_to.add(maintenance_request.assigned_to)
+                
                 # Update completed_at timestamp if marked as completed
                 if maintenance_request.status == MaintenanceRequest.Status.COMPLETED:
                     from django.utils import timezone

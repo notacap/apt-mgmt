@@ -47,6 +47,17 @@ class PaymentSchedule(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
+    @property
+    def current_unit_rent(self):
+        """Get the current rent amount set on the apartment unit"""
+        return self.apartment_unit.rent_amount if self.apartment_unit else Decimal('0.00')
+    
+    def save(self, *args, **kwargs):
+        # If no rent_amount is set, use the apartment unit's rent amount
+        if not self.rent_amount and self.apartment_unit:
+            self.rent_amount = self.apartment_unit.rent_amount
+        super().save(*args, **kwargs)
+    
     def __str__(self):
         return f"{self.tenant.username} - {self.apartment_unit} - ${self.rent_amount}"
     
@@ -121,19 +132,28 @@ class RentPayment(models.Model):
     
     @property
     def total_amount_due(self):
-        return self.amount_due + self.late_fee
+        amount = self.amount_due or Decimal('0.00')
+        late_fee = self.late_fee or Decimal('0.00')
+        return amount + late_fee
     
     @property
     def balance_remaining(self):
-        return self.total_amount_due - self.amount_paid
+        total = self.total_amount_due
+        paid = self.amount_paid or Decimal('0.00')
+        return total - paid
     
     @property
     def is_overdue(self):
         from django.utils import timezone
+        if not self.due_date:
+            return False
         return self.due_date < timezone.now().date() and self.status in ['PENDING', 'PARTIAL']
     
     def __str__(self):
-        return f"{self.payment_schedule.tenant.username} - {self.due_date} - ${self.amount_due}"
+        tenant_name = self.payment_schedule.tenant.username if self.payment_schedule else "No Schedule"
+        due_date = self.due_date or "No Date"
+        amount = self.amount_due or Decimal('0.00')
+        return f"{tenant_name} - {due_date} - ${amount}"
     
     class Meta:
         ordering = ['-due_date']
