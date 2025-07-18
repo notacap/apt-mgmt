@@ -161,21 +161,40 @@ def get_user_events(user, start_date, end_date):
     if user.role == User.Role.SUPERUSER:
         # Superuser can see all events
         pass
-    elif user.role in [User.Role.LANDLORD, User.Role.EMPLOYEE]:
-        # Landlords and employees see events in their company
+    elif user.role == User.Role.LANDLORD:
+        # Landlords see all events in their company
         events = events.filter(
             Q(property__company=user.company) |
             Q(created_by=user) |
             Q(assigned_to=user)
         )
+    elif user.role == User.Role.EMPLOYEE:
+        # Employees see events based on their property access
+        if user.property is None:
+            # Employee has access to all properties in their company
+            events = events.filter(
+                Q(property__company=user.company) |
+                Q(created_by=user) |
+                Q(assigned_to=user)
+            )
+        else:
+            # Employee has access only to their assigned property
+            events = events.filter(
+                Q(property=user.property) |
+                Q(created_by=user) |
+                Q(assigned_to=user)
+            )
     else:  # Tenant
-        # Tenants see events in their property or assigned to them
-        # Also include maintenance events for their own maintenance requests
+        # Tenants see:
+        # 1. Non-maintenance events in their property that are not private
+        # 2. Events they created
+        # 3. Events they are assigned to
+        # 4. Maintenance events ONLY for their own maintenance requests
         events = events.filter(
-            Q(property=user.property, is_private=False) |
+            Q(property=user.property, is_private=False, maintenance_request__isnull=True) |  # Non-maintenance events in property
             Q(created_by=user) |
             Q(assigned_to=user) |
-            Q(maintenance_request__tenant=user)  # Show maintenance events for their own requests
+            Q(maintenance_request__tenant=user)  # Only their own maintenance events
         )
     
     return events.distinct()
@@ -407,8 +426,20 @@ def get_events_json(request):
             start_str = start_date.isoformat()
             end_str = end_date.isoformat()
         else:
-            start_str = event.start_datetime.isoformat()
-            end_str = event.end_datetime.isoformat()
+            # Convert to local timezone first to ensure proper date comparison
+            local_start = timezone.localtime(event.start_datetime)
+            local_end = timezone.localtime(event.end_datetime)
+            
+            # If the event starts and ends on the same local date, ensure JavaScript treats it as same-day
+            if local_start.date() == local_end.date():
+                # For same-day events, we can use the full datetime but need to ensure
+                # JavaScript will recognize them as same-day by using the local time
+                start_str = local_start.isoformat()
+                end_str = local_end.isoformat()
+            else:
+                # For truly multi-day events, use the original datetime
+                start_str = event.start_datetime.isoformat()
+                end_str = event.end_datetime.isoformat()
             
         events_data.append({
             'id': event.id,
