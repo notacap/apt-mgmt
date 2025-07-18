@@ -386,6 +386,9 @@ def accept_invitation(request, token):
             user.role = invitation.role
             user.company = invitation.company
             user.property = invitation.property
+            # Set apartment unit for tenants
+            if invitation.role == 'TENANT' and invitation.apartment_unit:
+                user.apartment_unit = invitation.apartment_unit
             user.set_password(form.cleaned_data["password"])
             user.save()
 

@@ -38,8 +38,28 @@ class MaintenanceRequestForm(forms.ModelForm):
 
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
-        if user and user.property:
-            # Filter apartment units to only show units in the user's property
+        
+        # Handle apartment_unit field based on user role
+        if user and user.role == 'TENANT':
+            # For tenants, make apartment_unit read-only and pre-populate with their unit
+            if user.apartment_unit:
+                self.fields['apartment_unit'].widget = forms.TextInput(attrs={
+                    'class': 'mt-1 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm focus:border-indigo-500 focus:ring-indigo-500',
+                    'readonly': 'readonly',
+                    'value': str(user.apartment_unit)
+                })
+                self.fields['apartment_unit'].queryset = ApartmentUnit.objects.filter(id=user.apartment_unit.id)
+                self.initial['apartment_unit'] = user.apartment_unit
+            else:
+                # If tenant doesn't have an apartment unit assigned, show error message
+                self.fields['apartment_unit'].widget = forms.TextInput(attrs={
+                    'class': 'mt-1 block w-full rounded-md border-red-300 bg-red-50 shadow-sm',
+                    'readonly': 'readonly',
+                    'value': 'No apartment unit assigned'
+                })
+                self.fields['apartment_unit'].queryset = ApartmentUnit.objects.none()
+        elif user and user.property:
+            # Filter apartment units to only show units in the user's property for non-tenants
             self.fields['apartment_unit'].queryset = ApartmentUnit.objects.filter(
                 property=user.property
             )

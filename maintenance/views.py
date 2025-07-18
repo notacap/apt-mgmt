@@ -126,6 +126,7 @@ def maintenance_create(request):
             maintenance_request = form.save(commit=False)
             maintenance_request.tenant = request.user
             maintenance_request.property = request.user.property
+            maintenance_request.apartment_unit = request.user.apartment_unit
             maintenance_request.save()
             
             # Save photos

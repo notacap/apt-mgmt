@@ -13,6 +13,7 @@ class User(AbstractUser):
     role = models.CharField(max_length=50, choices=Role.choices)
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="users", null=True, blank=True)
     property = models.ForeignKey(Property, on_delete=models.SET_NULL, related_name="users", null=True, blank=True)
+    apartment_unit = models.ForeignKey('properties.ApartmentUnit', on_delete=models.SET_NULL, null=True, blank=True, related_name="tenant")
     # For employees with all_properties access, property field will be null
     # and we'll check company-wide access in permission checks
     
