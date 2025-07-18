@@ -84,6 +84,30 @@
                     <p class="mt-2 text-xs text-red-600 dark:text-red-400">{{ error }}</p>
                 {% endfor %}
             </div>
+
+            <!-- Payment Day Field -->
+            <div>
+                <label for="{{ form.rent_payment_date.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">{{ form.rent_payment_date.label }}</label>
+                {{ form.rent_payment_date|add_form_control }}
+                {% if form.rent_payment_date.help_text %}
+                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ form.rent_payment_date.help_text }}</p>
+                {% endif %}
+                {% for error in form.rent_payment_date.errors %}
+                    <p class="mt-2 text-xs text-red-600 dark:text-red-400">{{ error }}</p>
+                {% endfor %}
+            </div>
+
+            <!-- Lease Start Date Field -->
+            <div>
+                <label for="{{ form.lease_start_date.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">{{ form.lease_start_date.label }}</label>
+                {{ form.lease_start_date|add_form_control }}
+                {% if form.lease_start_date.help_text %}
+                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ form.lease_start_date.help_text }}</p>
+                {% endif %}
+                {% for error in form.lease_start_date.errors %}
+                    <p class="mt-2 text-xs text-red-600 dark:text-red-400">{{ error }}</p>
+                {% endfor %}
+            </div>
         </div>
 
         <button type="submit" class="w-full bg-blue-600 text-white p-3 rounded-lg font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800">Send Invitation</button>

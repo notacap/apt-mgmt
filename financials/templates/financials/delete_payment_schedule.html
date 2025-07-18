@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_title }} - Apartment Management{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-2xl">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div class="flex items-center mb-6">
+            <div class="flex-shrink-0">
+                <div class="w-12 h-12 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center">
+                    <svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.19 2.5 1.732 2.5z"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="ml-4">
+                <h1 class="text-xl font-bold text-gray-900 dark:text-white">{{ page_title }}</h1>
+                <p class="text-gray-600 dark:text-gray-400">This action cannot be undone.</p>
+            </div>
+        </div>
+
+        <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-6">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-3">Schedule Details</h3>
+            <div class="space-y-2">
+                <div class="flex justify-between">
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Tenant:</span>
+                    <span class="text-sm text-gray-900 dark:text-white">{{ schedule.tenant.get_full_name|default:schedule.tenant.username }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Email:</span>
+                    <span class="text-sm text-gray-900 dark:text-white">{{ schedule.tenant.email }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Property:</span>
+                    <span class="text-sm text-gray-900 dark:text-white">{{ schedule.apartment_unit.property.name }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Unit:</span>
+                    <span class="text-sm text-gray-900 dark:text-white">{{ schedule.apartment_unit }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Rent Amount:</span>
+                    <span class="text-sm font-bold text-green-600 dark:text-green-400">${{ schedule.rent_amount }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Frequency:</span>
+                    <span class="text-sm text-gray-900 dark:text-white">{{ schedule.get_frequency_display }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Start Date:</span>
+                    <span class="text-sm text-gray-900 dark:text-white">{{ schedule.start_date|date:"M j, Y" }}</span>
+                </div>
+                {% if schedule.end_date %}
+                <div class="flex justify-between">
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">End Date:</span>
+                    <span class="text-sm text-gray-900 dark:text-white">{{ schedule.end_date|date:"M j, Y" }}</span>
+                </div>
+                {% endif %}
+                <div class="flex justify-between">
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Status:</span>
+                    {% if schedule.is_active %}
+                        <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Active</span>
+                    {% else %}
+                        <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">Inactive</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-6">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-medium text-yellow-800 dark:text-yellow-200">Warning</h3>
+                    <div class="mt-2 text-sm text-yellow-700 dark:text-yellow-300">
+                        <ul class="list-disc pl-5 space-y-1">
+                            <li>Deleting this payment schedule will remove all associated payment records.</li>
+                            <li>The apartment unit will be marked as vacant and available for new tenants.</li>
+                            <li>This action cannot be undone - consider deactivating the schedule instead.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="flex items-center justify-between">
+                <a href="{% url 'financials:payment_schedule_detail' schedule.pk %}" 
+                   class="bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 px-6 py-2 rounded-lg font-medium hover:bg-gray-400 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                    Cancel
+                </a>
+                <button type="submit" 
+                        class="bg-red-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+                        onclick="return confirm('Are you absolutely sure? This will permanently delete the payment schedule and all associated payment records.')">
+                    Delete Payment Schedule
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div class="mt-6 text-center">
+        <a href="{% url 'financials:payment_schedule_list' %}" 
+           class="text-blue-600 dark:text-blue-400 hover:underline">
+            ← Back to Payment Schedules
+        </a>
+    </div>
+</div>
+{% endblock %}

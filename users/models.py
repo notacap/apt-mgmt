@@ -52,6 +52,7 @@ class Invitation(models.Model):
     apartment_unit = models.ForeignKey('properties.ApartmentUnit', on_delete=models.SET_NULL, null=True, blank=True, related_name="invitations")
     rent_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     rent_payment_date = models.IntegerField(null=True, blank=True, help_text="Day of month (1-28)")  # Day of month for payment
+    lease_start_date = models.DateField(null=True, blank=True, help_text="Date when the tenant's lease begins")
     lease_length_months = models.IntegerField(null=True, blank=True, choices=[(3, '3 months'), (6, '6 months'), (12, '12 months')])
     # Employee-specific field
     all_properties = models.BooleanField(default=False, help_text="Employee has access to all company properties")

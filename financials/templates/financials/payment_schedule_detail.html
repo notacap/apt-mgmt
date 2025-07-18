@@ -1,0 +1,204 @@
+{% extends 'base.html' %}
+{% load form_tags %}
+
+{% block title %}{{ page_title }} - Apartment Management{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{{ page_title }}</h1>
+            <p class="text-gray-600 dark:text-gray-400 mt-1">Manage payment schedule for {{ schedule.tenant.get_full_name|default:schedule.tenant.username }}</p>
+        </div>
+        {% if request.user.role in 'LANDLORD,EMPLOYEE' %}
+        <div class="flex space-x-2">
+            <a href="{% url 'financials:edit_payment_schedule' schedule.pk %}" 
+               class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                </svg>
+                Edit Schedule
+            </a>
+            <a href="{% url 'financials:delete_payment_schedule' schedule.pk %}" 
+               class="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">
+                <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+                Delete
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Schedule Information -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Schedule Information</h2>
+            <div class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Tenant</label>
+                        <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ schedule.tenant.get_full_name|default:schedule.tenant.username }}</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
+                        <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ schedule.tenant.email }}</p>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Property</label>
+                        <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ schedule.apartment_unit.property.name }}</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Unit</label>
+                        <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ schedule.apartment_unit }}</p>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Rent Amount</label>
+                        <p class="mt-1 text-lg font-bold text-green-600 dark:text-green-400">${{ schedule.rent_amount }}</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Frequency</label>
+                        <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ schedule.get_frequency_display }}</p>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Payment Day</label>
+                        <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ schedule.payment_day }} of each month</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Status</label>
+                        {% if schedule.is_active %}
+                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Active</span>
+                        {% else %}
+                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">Inactive</span>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Start Date</label>
+                        <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ schedule.start_date|date:"M j, Y" }}</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">End Date</label>
+                        <p class="mt-1 text-sm text-gray-900 dark:text-white">
+                            {% if schedule.end_date %}
+                                {{ schedule.end_date|date:"M j, Y" }}
+                            {% else %}
+                                No end date
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contact Information -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Contact Information</h2>
+            <div class="space-y-4">
+                <!-- Email Address (always present) -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Email Address</label>
+                    <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ schedule.tenant.email }}</p>
+                </div>
+                
+                {% if schedule.tenant.phone_number %}
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Phone Number</label>
+                    <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ schedule.tenant.phone_number }}</p>
+                </div>
+                {% endif %}
+                
+                {% if schedule.tenant.emergency_contact_name %}
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Emergency Contact</label>
+                    <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ schedule.tenant.emergency_contact_name }}</p>
+                    {% if schedule.tenant.emergency_contact_phone %}
+                        <p class="text-sm text-gray-600 dark:text-gray-400">{{ schedule.tenant.emergency_contact_phone }}</p>
+                    {% endif %}
+                    {% if schedule.tenant.emergency_contact_relationship %}
+                        <p class="text-sm text-gray-600 dark:text-gray-400">{{ schedule.tenant.emergency_contact_relationship }}</p>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Payments -->
+    {% if recent_payments %}
+    <div class="mt-8 bg-white dark:bg-gray-800 rounded-lg shadow">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <div class="flex justify-between items-center">
+                <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Recent Payments</h2>
+                <a href="{% url 'financials:payment_list' %}?schedule={{ schedule.pk }}" 
+                   class="text-blue-600 dark:text-blue-400 hover:underline text-sm">View All</a>
+            </div>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead class="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Due Date</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Amount Due</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Amount Paid</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Payment Date</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {% for payment in recent_payments %}
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                            {{ payment.due_date|date:"M j, Y" }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                            ${{ payment.amount_due }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                            ${{ payment.amount_paid }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% if payment.status == 'PAID' %}
+                                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Paid</span>
+                            {% elif payment.status == 'OVERDUE' %}
+                                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">Overdue</span>
+                            {% elif payment.status == 'PARTIAL' %}
+                                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">Partial</span>
+                            {% else %}
+                                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">{{ payment.get_status_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                            {% if payment.payment_date %}
+                                {{ payment.payment_date|date:"M j, Y" }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="mt-6">
+        <a href="{% url 'financials:payment_schedule_list' %}" 
+           class="text-blue-600 dark:text-blue-400 hover:underline">
+            ← Back to Payment Schedules
+        </a>
+    </div>
+</div>
+{% endblock %}

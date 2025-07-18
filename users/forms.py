@@ -37,11 +37,18 @@ class InvitationForm(forms.ModelForm):
     
     class Meta:
         model = Invitation
-        fields = ["email", "role", "property", "apartment_unit", "lease_length_months", "all_properties"]
+        fields = ["email", "role", "property", "apartment_unit", "lease_length_months", 
+                 "rent_payment_date", "lease_start_date", "all_properties"]
         labels = {
             'apartment_unit': 'Apartment Unit',
             'lease_length_months': 'Lease Length',
+            'rent_payment_date': 'Payment Day',
+            'lease_start_date': 'Lease Start Date',
             'all_properties': 'Grant access to all properties'
+        }
+        widgets = {
+            'lease_start_date': forms.DateInput(attrs={'type': 'date'}),
+            'rent_payment_date': forms.NumberInput(attrs={'min': '1', 'max': '28', 'placeholder': 'Day of month (1-28)'}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -78,6 +85,10 @@ class InvitationForm(forms.ModelForm):
                 raise forms.ValidationError("Apartment unit is required for tenant invitations.")
             if not cleaned_data.get('lease_length_months'):
                 raise forms.ValidationError("Lease length is required for tenant invitations.")
+            if not cleaned_data.get('rent_payment_date'):
+                raise forms.ValidationError("Payment day is required for tenant invitations.")
+            if not cleaned_data.get('lease_start_date'):
+                raise forms.ValidationError("Lease start date is required for tenant invitations.")
             
             # Validate that apartment unit belongs to selected property
             if property_obj and apartment_unit:
@@ -92,6 +103,8 @@ class InvitationForm(forms.ModelForm):
             # Clear tenant-specific fields
             cleaned_data['apartment_unit'] = None
             cleaned_data['lease_length_months'] = None
+            cleaned_data['rent_payment_date'] = None
+            cleaned_data['lease_start_date'] = None
             # If all_properties is True, property can be None
             if cleaned_data.get('all_properties') and not property_obj:
                 cleaned_data['property'] = None

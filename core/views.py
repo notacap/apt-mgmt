@@ -402,7 +402,7 @@ def accept_invitation(request, token):
                 
                 # Create payment schedule using apartment unit's rent amount
                 if invitation.lease_length_months:
-                    start_date = date.today()
+                    start_date = invitation.lease_start_date or date.today()
                     # Calculate end date based on lease length
                     year = start_date.year
                     month = start_date.month + invitation.lease_length_months
@@ -416,7 +416,7 @@ def accept_invitation(request, token):
                         apartment_unit=invitation.apartment_unit,
                         rent_amount=invitation.apartment_unit.rent_amount,  # Use apartment unit's rent amount
                         frequency='MONTHLY',
-                        payment_day=1,  # Default to 1st of month - can be updated later in payment schedule management
+                        payment_day=invitation.rent_payment_date or 1,  # Use payment day from invitation or default to 1st
                         start_date=start_date,
                         end_date=end_date,
                         is_active=True

@@ -8,11 +8,19 @@ User = get_user_model()
 class PaymentScheduleForm(forms.ModelForm):
     class Meta:
         model = PaymentSchedule
-        fields = ['tenant', 'apartment_unit', 'rent_amount', 'frequency', 'start_date', 'end_date', 'is_active']
+        fields = ['tenant', 'apartment_unit', 'rent_amount', 'frequency', 'payment_day', 'start_date', 'end_date', 'is_active']
+        labels = {
+            'payment_day': 'Payment Day',
+            'start_date': 'Lease Start Date',
+            'end_date': 'Lease End Date',
+            'rent_amount': 'Rent Amount',
+            'is_active': 'Active Schedule'
+        }
         widgets = {
             'start_date': forms.DateInput(attrs={'type': 'date'}),
             'end_date': forms.DateInput(attrs={'type': 'date'}),
             'rent_amount': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
+            'payment_day': forms.NumberInput(attrs={'min': '1', 'max': '28'}),
         }
     
     def __init__(self, *args, **kwargs):
