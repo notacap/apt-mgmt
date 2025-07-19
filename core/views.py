@@ -151,6 +151,40 @@ def landlord_dashboard(request):
     # Calculate net revenue
     current_month_revenue = current_month_income - current_month_expenses
     
+    # Calculate payment status metrics
+    current_month_end = (current_month_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+    
+    # Get current month rent payments
+    current_month_rent_payments = RentPayment.objects.filter(
+        payment_schedule__apartment_unit__property__company=request.user.company,
+        due_date__gte=current_month_start,
+        due_date__lte=current_month_end
+    )
+    
+    # Filter by property if landlord is assigned to specific property
+    if request.user.property:
+        current_month_rent_payments = current_month_rent_payments.filter(
+            payment_schedule__apartment_unit__property=request.user.property
+        )
+    
+    # Calculate payment status statistics
+    total_current_payments = current_month_rent_payments.count()
+    paid_payments = current_month_rent_payments.filter(status='PAID').count()
+    overdue_payments = current_month_rent_payments.filter(status='OVERDUE').count()
+    pending_payments = current_month_rent_payments.filter(status='PENDING').count()
+    partial_payments = current_month_rent_payments.filter(status='PARTIAL').count()
+    
+    # Calculate on-time payment percentage
+    if total_current_payments > 0:
+        on_time_percentage = round((paid_payments / total_current_payments) * 100)
+    else:
+        on_time_percentage = 0
+    
+    # Count tenants with late/overdue payments
+    late_tenants = current_month_rent_payments.filter(
+        status__in=['OVERDUE', 'PARTIAL']
+    ).values('payment_schedule__tenant').distinct().count()
+    
     # Get available properties for the property selector
     from properties.models import Property
     available_properties = Property.objects.filter(company=request.user.company)
@@ -208,6 +242,28 @@ def landlord_dashboard(request):
             ).count()
             recent_maintenance_requests = company_maintenance_requests.order_by('-created_at')[:5]
             
+            # Recalculate payment status for selected property
+            current_month_rent_payments = RentPayment.objects.filter(
+                payment_schedule__apartment_unit__property=selected_property,
+                due_date__gte=current_month_start,
+                due_date__lte=current_month_end
+            )
+            
+            total_current_payments = current_month_rent_payments.count()
+            paid_payments = current_month_rent_payments.filter(status='PAID').count()
+            overdue_payments = current_month_rent_payments.filter(status='OVERDUE').count()
+            pending_payments = current_month_rent_payments.filter(status='PENDING').count()
+            partial_payments = current_month_rent_payments.filter(status='PARTIAL').count()
+            
+            if total_current_payments > 0:
+                on_time_percentage = round((paid_payments / total_current_payments) * 100)
+            else:
+                on_time_percentage = 0
+            
+            late_tenants = current_month_rent_payments.filter(
+                status__in=['OVERDUE', 'PARTIAL']
+            ).values('payment_schedule__tenant').distinct().count()
+            
         except Property.DoesNotExist:
             selected_property = None
     
@@ -236,6 +292,14 @@ def landlord_dashboard(request):
         'current_month_revenue': current_month_revenue,
         'expense_records_total': expense_records_total if 'expense_records_total' in locals() else Decimal('0.00'),
         'maintenance_invoices_total': maintenance_invoices_total if 'maintenance_invoices_total' in locals() else Decimal('0.00'),
+        # Payment status data
+        'on_time_percentage': on_time_percentage,
+        'total_current_payments': total_current_payments,
+        'paid_payments': paid_payments,
+        'overdue_payments': overdue_payments,
+        'pending_payments': pending_payments,
+        'partial_payments': partial_payments,
+        'late_tenants': late_tenants,
         # Property selection data
         'available_properties': available_properties,
         'selected_property': selected_property,
@@ -1012,3 +1076,147 @@ def maintenance_requests_detail(request):
     }
     
     return render(request, 'dashboards/maintenance_requests_detail.html', context)
+
+@login_required
+def payment_status_detail(request):
+    """Detailed view for payment status metrics"""
+    if not request.user.company:
+        messages.error(request, "You must be assigned to a company to access this page.")
+        return redirect("core:login")
+    
+    # Only allow landlords and employees to access this view
+    if request.user.role not in [User.Role.LANDLORD, User.Role.EMPLOYEE]:
+        messages.error(request, "You do not have permission to access this page.")
+        return redirect("core:dashboard_redirect")
+    
+    # Get filter parameters from URL
+    property_id = request.GET.get('property')
+    status_filter = request.GET.get('status')
+    search_query = request.GET.get('search')
+    
+    selected_property = None
+    if property_id:
+        try:
+            from properties.models import Property
+            selected_property = Property.objects.get(
+                id=property_id, 
+                company=request.user.company
+            )
+        except Property.DoesNotExist:
+            selected_property = None
+    
+    # Date range calculations
+    current_month_start = timezone.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    current_month_end = (current_month_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+    
+    # Base query for rent payments
+    rent_payments_query = RentPayment.objects.filter(
+        payment_schedule__apartment_unit__property__company=request.user.company,
+        due_date__gte=current_month_start,
+        due_date__lte=current_month_end
+    ).select_related(
+        'payment_schedule__tenant',
+        'payment_schedule__apartment_unit',
+        'payment_schedule__apartment_unit__property'
+    )
+    
+    # Apply property filter
+    if selected_property:
+        rent_payments_query = rent_payments_query.filter(
+            payment_schedule__apartment_unit__property=selected_property
+        )
+    elif request.user.property:
+        rent_payments_query = rent_payments_query.filter(
+            payment_schedule__apartment_unit__property=request.user.property
+        )
+    
+    # Apply status filter
+    if status_filter and status_filter != 'all':
+        rent_payments_query = rent_payments_query.filter(status=status_filter)
+    
+    # Apply search filter
+    if search_query:
+        rent_payments_query = rent_payments_query.filter(
+            Q(payment_schedule__tenant__first_name__icontains=search_query) |
+            Q(payment_schedule__tenant__last_name__icontains=search_query) |
+            Q(payment_schedule__tenant__username__icontains=search_query) |
+            Q(payment_schedule__apartment_unit__unit_number__icontains=search_query) |
+            Q(reference_number__icontains=search_query)
+        )
+    
+    # Order by due date (most urgent first)
+    rent_payments = rent_payments_query.order_by('due_date', 'payment_schedule__apartment_unit__unit_number')
+    
+    # Calculate status counts for the filtered property/company
+    base_count_query = RentPayment.objects.filter(
+        payment_schedule__apartment_unit__property__company=request.user.company,
+        due_date__gte=current_month_start,
+        due_date__lte=current_month_end
+    )
+    if selected_property:
+        base_count_query = base_count_query.filter(
+            payment_schedule__apartment_unit__property=selected_property
+        )
+    elif request.user.property:
+        base_count_query = base_count_query.filter(
+            payment_schedule__apartment_unit__property=request.user.property
+        )
+    
+    status_counts = {
+        'total': base_count_query.count(),
+        'paid': base_count_query.filter(status='PAID').count(),
+        'pending': base_count_query.filter(status='PENDING').count(),
+        'overdue': base_count_query.filter(status='OVERDUE').count(),
+        'partial': base_count_query.filter(status='PARTIAL').count(),
+        'failed': base_count_query.filter(status='FAILED').count(),
+    }
+    
+    # Calculate financial totals
+    total_due = base_count_query.aggregate(total=Sum('amount_due'))['total'] or Decimal('0.00')
+    total_paid = base_count_query.filter(status='PAID').aggregate(total=Sum('amount_paid'))['total'] or Decimal('0.00')
+    total_outstanding = base_count_query.filter(status__in=['PENDING', 'OVERDUE', 'PARTIAL']).aggregate(total=Sum('amount_due'))['total'] or Decimal('0.00')
+    
+    # Calculate collection rate
+    if total_due > 0:
+        collection_rate = round((total_paid / total_due) * 100)
+    else:
+        collection_rate = 0
+    
+    # On-time payment percentage
+    if status_counts['total'] > 0:
+        on_time_percentage = round((status_counts['paid'] / status_counts['total']) * 100)
+    else:
+        on_time_percentage = 0
+    
+    # Count unique tenants with late payments
+    late_tenants_count = base_count_query.filter(
+        status__in=['OVERDUE', 'PARTIAL']
+    ).values('payment_schedule__tenant').distinct().count()
+    
+    # Get available properties for filter dropdown
+    from properties.models import Property
+    available_properties = Property.objects.filter(company=request.user.company)
+    if request.user.property:
+        available_properties = available_properties.filter(id=request.user.property.id)
+    
+    context = {
+        'rent_payments': rent_payments,
+        'selected_property': selected_property,
+        'available_properties': available_properties,
+        'status_filter': status_filter,
+        'search_query': search_query,
+        'status_counts': status_counts,
+        'total_due': total_due,
+        'total_paid': total_paid,
+        'total_outstanding': total_outstanding,
+        'collection_rate': collection_rate,
+        'on_time_percentage': on_time_percentage,
+        'late_tenants_count': late_tenants_count,
+        'current_month_start': current_month_start,
+        'current_month_end': current_month_end,
+        'filtered_count': rent_payments.count(),
+        # Status choices for dropdowns
+        'status_choices': RentPayment.Status.choices,
+    }
+    
+    return render(request, 'dashboards/payment_status_detail.html', context)

@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+
+{% block title %}Payment Status - Detailed View{% endblock %}
+
+{% block content %}
+<div class="container mx-auto max-w-7xl">
+    <!-- Header with Navigation -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 space-y-4 sm:space-y-0">
+        <div>
+            <div class="flex items-center space-x-3 mb-2">
+                <a href="{% url 'core:landlord_dashboard' %}" class="text-blue-600 dark:text-blue-400 hover:underline">
+                    <svg class="w-5 h-5 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
+                    Back to Dashboard
+                </a>
+            </div>
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Payment Status</h1>
+            <p class="text-gray-600 dark:text-gray-400 mt-1">
+                Detailed view for {{ current_month_start|date:"F Y" }}
+                {% if selected_property %} - {{ selected_property.name }}{% endif %}
+            </p>
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="flex items-center space-x-4">
+            <a href="{% url 'financials:payment_list' %}" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                Manage Payments
+            </a>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <!-- Collection Rate -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-1">
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Collection Rate</p>
+                    <p class="mt-2 text-3xl font-bold {% if collection_rate >= 90 %}text-green-600 dark:text-green-400{% elif collection_rate >= 70 %}text-yellow-600 dark:text-yellow-400{% else %}text-red-600 dark:text-red-400{% endif %}">{{ collection_rate }}%</p>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">${{ total_paid|floatformat:2 }} of ${{ total_due|floatformat:2 }}</p>
+                </div>
+                <div class="flex-shrink-0">
+                    <div class="w-10 h-10 {% if collection_rate >= 90 %}bg-green-100 dark:bg-green-900{% elif collection_rate >= 70 %}bg-yellow-100 dark:bg-yellow-900{% else %}bg-red-100 dark:bg-red-900{% endif %} rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 {% if collection_rate >= 90 %}text-green-600 dark:text-green-400{% elif collection_rate >= 70 %}text-yellow-600 dark:text-yellow-400{% else %}text-red-600 dark:text-red-400{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- On-Time Payments -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-1">
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">On-Time Payments</p>
+                    <p class="mt-2 text-3xl font-bold {% if on_time_percentage >= 90 %}text-green-600 dark:text-green-400{% elif on_time_percentage >= 70 %}text-yellow-600 dark:text-yellow-400{% else %}text-red-600 dark:text-red-400{% endif %}">{{ on_time_percentage }}%</p>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ status_counts.paid }} of {{ status_counts.total }} payments</p>
+                </div>
+                <div class="flex-shrink-0">
+                    <div class="w-10 h-10 {% if on_time_percentage >= 90 %}bg-green-100 dark:bg-green-900{% elif on_time_percentage >= 70 %}bg-yellow-100 dark:bg-yellow-900{% else %}bg-red-100 dark:bg-red-900{% endif %} rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 {% if on_time_percentage >= 90 %}text-green-600 dark:text-green-400{% elif on_time_percentage >= 70 %}text-yellow-600 dark:text-yellow-400{% else %}text-red-600 dark:text-red-400{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Outstanding Amount -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-1">
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Outstanding</p>
+                    <p class="mt-2 text-3xl font-bold text-orange-600 dark:text-orange-400">${{ total_outstanding|floatformat:2 }}</p>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Pending collection</p>
+                </div>
+                <div class="flex-shrink-0">
+                    <div class="w-10 h-10 bg-orange-100 dark:bg-orange-900 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Late Tenants -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-1">
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Late Tenants</p>
+                    <p class="mt-2 text-3xl font-bold {% if late_tenants_count > 0 %}text-red-600 dark:text-red-400{% else %}text-green-600 dark:text-green-400{% endif %}">{{ late_tenants_count }}</p>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Overdue or partial payments</p>
+                </div>
+                <div class="flex-shrink-0">
+                    <div class="w-10 h-10 {% if late_tenants_count > 0 %}bg-red-100 dark:bg-red-900{% else %}bg-green-100 dark:bg-green-900{% endif %} rounded-lg flex items-center justify-center">
+                        {% if late_tenants_count > 0 %}
+                            <svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.19 2.5 1.732 2.5z"></path>
+                            </svg>
+                        {% else %}
+                            <svg class="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters and Search -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow mb-8">
+        <div class="p-6">
+            <form method="get" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <!-- Property Filter -->
+                    <div>
+                        <label for="property" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Property</label>
+                        <select name="property" id="property" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+                            <option value="">All Properties</option>
+                            {% for property in available_properties %}
+                                <option value="{{ property.id }}" {% if selected_property.id == property.id %}selected{% endif %}>{{ property.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Status Filter -->
+                    <div>
+                        <label for="status" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Status</label>
+                        <select name="status" id="status" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+                            <option value="all">All Status</option>
+                            {% for status_value, status_label in status_choices %}
+                                <option value="{{ status_value }}" {% if status_filter == status_value %}selected{% endif %}>{{ status_label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Search -->
+                    <div>
+                        <label for="search" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Search</label>
+                        <input type="text" name="search" id="search" value="{{ search_query|default:'' }}" placeholder="Tenant, unit, reference..." class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="flex items-end space-x-2">
+                        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            Filter
+                        </button>
+                        <a href="{% url 'core:payment_status_detail' %}" class="bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-400 dark:hover:bg-gray-500">
+                            Clear
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Payment Status List -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Rent Payments</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">{{ filtered_count }} payment{{ filtered_count|pluralize }} found for {{ current_month_start|date:"F Y" }}</p>
+                </div>
+            </div>
+        </div>
+        
+        {% if rent_payments %}
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead class="bg-gray-50 dark:bg-gray-700">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tenant</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Unit</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Due Date</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Amount Due</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Amount Paid</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Payment Date</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Reference</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                        {% for payment in rent_payments %}
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 {% if payment.status == 'OVERDUE' %}bg-red-50 dark:bg-red-900/20{% endif %}">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm font-medium text-gray-900 dark:text-white">
+                                        {{ payment.payment_schedule.tenant.get_full_name|default:payment.payment_schedule.tenant.username }}
+                                    </div>
+                                    <div class="text-sm text-gray-500 dark:text-gray-400">
+                                        {{ payment.payment_schedule.tenant.email }}
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900 dark:text-white">
+                                        {{ payment.payment_schedule.apartment_unit.unit_number }}
+                                    </div>
+                                    <div class="text-sm text-gray-500 dark:text-gray-400">
+                                        {{ payment.payment_schedule.apartment_unit.property.name }}
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                                    {{ payment.due_date|date:"M j, Y" }}
+                                    {% if payment.is_overdue %}
+                                        <div class="text-xs text-red-600 dark:text-red-400">Overdue</div>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                                    ${{ payment.amount_due|floatformat:2 }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                                    ${{ payment.amount_paid|floatformat:2 }}
+                                    {% if payment.balance_remaining > 0 %}
+                                        <div class="text-xs text-orange-600 dark:text-orange-400">
+                                            ${{ payment.balance_remaining|floatformat:2 }} remaining
+                                        </div>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    {% if payment.status == 'PAID' %}
+                                        <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded-full">Paid</span>
+                                    {% elif payment.status == 'PENDING' %}
+                                        <span class="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 rounded-full">Pending</span>
+                                    {% elif payment.status == 'OVERDUE' %}
+                                        <span class="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 rounded-full">Overdue</span>
+                                    {% elif payment.status == 'PARTIAL' %}
+                                        <span class="px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 rounded-full">Partial</span>
+                                    {% elif payment.status == 'FAILED' %}
+                                        <span class="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200 rounded-full">Failed</span>
+                                    {% else %}
+                                        <span class="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200 rounded-full">{{ payment.get_status_display }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                                    {% if payment.payment_date %}
+                                        {{ payment.payment_date|date:"M j, Y" }}
+                                    {% else %}
+                                        <span class="text-gray-400">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                                    {% if payment.reference_number %}
+                                        {{ payment.reference_number }}
+                                    {% else %}
+                                        <span class="text-gray-400">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="p-12 text-center">
+                <div class="text-gray-500 dark:text-gray-400">
+                    <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                    </svg>
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">No Payments</h3>
+                    <p class="text-gray-500 dark:text-gray-400">No payments found for {{ current_month_start|date:"F Y" }}{% if selected_property %} in {{ selected_property.name }}{% endif %}.</p>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

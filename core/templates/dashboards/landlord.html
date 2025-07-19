@@ -178,25 +178,41 @@
         </a>
 
         <!-- Payment Status -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow duration-200">
+        <a href="{% url 'core:payment_status_detail' %}{% if selected_property %}?property={{ selected_property.id }}{% endif %}" class="block bg-white dark:bg-gray-800 rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow duration-200">
             <div class="flex items-center">
                 <div class="flex-1">
                     <p class="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Payment Status</p>
-                    <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">94%</p>
+                    <p class="mt-2 text-3xl font-bold {% if on_time_percentage >= 90 %}text-green-600 dark:text-green-400{% elif on_time_percentage >= 70 %}text-yellow-600 dark:text-yellow-400{% else %}text-red-600 dark:text-red-400{% endif %}">{{ on_time_percentage }}%</p>
                     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">On-time payments this month</p>
                 </div>
                 <div class="flex-shrink-0">
-                    <div class="w-10 h-10 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
-                        <svg class="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
+                    <div class="w-10 h-10 {% if on_time_percentage >= 90 %}bg-green-100 dark:bg-green-900{% elif on_time_percentage >= 70 %}bg-yellow-100 dark:bg-yellow-900{% else %}bg-red-100 dark:bg-red-900{% endif %} rounded-lg flex items-center justify-center">
+                        {% if on_time_percentage >= 90 %}
+                            <svg class="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        {% elif on_time_percentage >= 70 %}
+                            <svg class="w-6 h-6 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.19 2.5 1.732 2.5z"></path>
+                            </svg>
+                        {% else %}
+                            <svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.19 2.5 1.732 2.5z"></path>
+                            </svg>
+                        {% endif %}
                     </div>
                 </div>
             </div>
             <div class="mt-4 flex items-center">
-                <span class="text-sm text-gray-500 dark:text-gray-400">2 tenants late payment</span>
+                {% if late_tenants > 0 %}
+                    <span class="text-sm text-red-600 dark:text-red-400">{{ late_tenants }} tenant{{ late_tenants|pluralize }} late payment</span>
+                {% elif total_current_payments > 0 %}
+                    <span class="text-sm text-green-600 dark:text-green-400">All payments current</span>
+                {% else %}
+                    <span class="text-sm text-gray-500 dark:text-gray-400">No payments this month</span>
+                {% endif %}
             </div>
-        </div>
+        </a>
 
         <!-- Occupancy Rate -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow duration-200">
