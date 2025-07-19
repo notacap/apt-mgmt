@@ -431,25 +431,62 @@
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Tenant Management</h3>
-                <a href="#" class="text-blue-600 dark:text-blue-400 hover:underline text-sm">View All</a>
+                <a href="{% url 'core:tenant_list' %}{% if selected_property %}?property={{ selected_property.id }}{% endif %}" class="text-blue-600 dark:text-blue-400 hover:underline text-sm">View All</a>
             </div>
             <div class="space-y-3">
-                <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                    <div>
-                        <p class="font-medium text-gray-900 dark:text-white">John Doe</p>
-                        <p class="text-sm text-gray-600 dark:text-gray-400">Unit 101 • Lease expires March 2024</p>
+                {% if recent_tenants %}
+                    {% for tenant_info in recent_tenants %}
+                        <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                            <div>
+                                <p class="font-medium text-gray-900 dark:text-white">{{ tenant_info.tenant.get_full_name|default:tenant_info.tenant.username }}</p>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">
+                                    {% if tenant_info.tenant.apartment_unit %}
+                                        Unit {{ tenant_info.tenant.apartment_unit.unit_number }}
+                                        {% if tenant_info.tenant.apartment_unit.property.name != selected_property.name and not selected_property %}
+                                            • {{ tenant_info.tenant.apartment_unit.property.name }}
+                                        {% endif %}
+                                        {% if tenant_info.lease_end_date %}
+                                            • Lease expires {{ tenant_info.lease_end_date|date:"M Y" }}
+                                        {% endif %}
+                                    {% else %}
+                                        No unit assigned
+                                    {% endif %}
+                                </p>
+                            </div>
+                            {% if tenant_info.lease_status == 'active' %}
+                                <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded-full">Active</span>
+                            {% elif tenant_info.lease_status == 'expiring_soon' %}
+                                <span class="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 rounded-full">Expiring Soon</span>
+                            {% elif tenant_info.lease_status == 'expired' %}
+                                <span class="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 rounded-full">Expired</span>
+                            {% elif tenant_info.lease_status == 'no_lease' and tenant_info.tenant.apartment_unit %}
+                                <span class="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 rounded-full">No Lease</span>
+                            {% else %}
+                                <span class="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 rounded-full">No Unit</span>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-4">
+                        <p class="text-sm text-gray-500 dark:text-gray-400">No tenants found</p>
+                        {% if selected_property %}
+                            <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">No tenants in {{ selected_property.name }}</p>
+                        {% endif %}
                     </div>
-                    <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded-full">Active</span>
-                </div>
-                <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                    <div>
-                        <p class="font-medium text-gray-900 dark:text-white">Jane Smith</p>
-                        <p class="text-sm text-gray-600 dark:text-gray-400">Unit 205 • Lease expires Jan 2024</p>
-                    </div>
-                    <span class="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 rounded-full">Expiring Soon</span>
-                </div>
+                {% endif %}
             </div>
-            <div class="mt-4">
+            <div class="mt-4 space-y-2">
+                <!-- Summary stats -->
+                <div class="flex items-center justify-between text-sm">
+                    <span class="text-gray-600 dark:text-gray-400">Total Tenants:</span>
+                    <span class="font-medium text-gray-900 dark:text-white">{{ total_tenant_count }}</span>
+                </div>
+                {% if tenants_with_expiring_leases > 0 %}
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-gray-600 dark:text-gray-400">Expiring Soon:</span>
+                        <span class="font-medium text-yellow-600 dark:text-yellow-400">{{ tenants_with_expiring_leases }}</span>
+                    </div>
+                {% endif %}
                 <a href="{% url 'core:send_invitation' %}" class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-center block">
                     Add New Tenant
                 </a>

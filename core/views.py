@@ -388,6 +388,77 @@ def landlord_dashboard(request):
         except Property.DoesNotExist:
             selected_property = None
     
+    # Get tenant data for Tenant Management card
+    tenant_query = User.objects.filter(
+        company=request.user.company,
+        role=User.Role.TENANT
+    ).select_related('apartment_unit', 'apartment_unit__property')
+    
+    # Apply property filter for tenants
+    if selected_property:
+        tenant_query = tenant_query.filter(apartment_unit__property=selected_property)
+    elif request.user.property:
+        tenant_query = tenant_query.filter(apartment_unit__property=request.user.property)
+    
+    # Get recent tenants with lease information (for display in the card)
+    recent_tenants_raw = tenant_query.order_by('-date_joined')[:3]
+    
+    # Annotate tenants with lease information
+    recent_tenants = []
+    for tenant in recent_tenants_raw:
+        lease_info = {
+            'tenant': tenant,
+            'lease_end_date': None,
+            'lease_status': 'no_lease',
+            'days_until_expiration': None
+        }
+        
+        # Debug: Let's check what payment schedules exist for this tenant
+        all_schedules = PaymentSchedule.objects.filter(tenant=tenant)
+        print(f"DEBUG: Tenant {tenant.username} has {all_schedules.count()} payment schedules")
+        for schedule in all_schedules:
+            print(f"  - Schedule: {schedule.apartment_unit}, Active: {schedule.is_active}, End Date: {schedule.end_date}")
+        
+        # Try finding by tenant only first (more lenient)
+        active_lease = PaymentSchedule.objects.filter(
+            tenant=tenant,
+            is_active=True,
+            end_date__isnull=False
+        ).first()
+        
+        if active_lease and active_lease.end_date:
+                lease_info['lease_end_date'] = active_lease.end_date
+                days_until_expiration = (active_lease.end_date - today).days
+                lease_info['days_until_expiration'] = days_until_expiration
+                
+                if active_lease.end_date < today:
+                    lease_info['lease_status'] = 'expired'
+                elif days_until_expiration <= 30:
+                    lease_info['lease_status'] = 'expiring_soon'
+                else:
+                    lease_info['lease_status'] = 'active'
+        
+        recent_tenants.append(lease_info)
+    
+    # Calculate tenant stats
+    total_tenant_count = tenant_query.count()
+    tenants_with_expiring_leases = 0
+    
+    # Check for expiring leases in the next 30 days
+    today = timezone.now().date()
+    for tenant in tenant_query:
+        if tenant.apartment_unit:
+            active_lease = PaymentSchedule.objects.filter(
+                tenant=tenant,
+                apartment_unit=tenant.apartment_unit,
+                is_active=True,
+                end_date__isnull=False,
+                end_date__gte=today,
+                end_date__lte=today + timedelta(days=30)
+            ).first()
+            if active_lease:
+                tenants_with_expiring_leases += 1
+    
     context = {
         'recent_documents': recent_documents,
         'company_doc_count': company_doc_count,
@@ -434,6 +505,10 @@ def landlord_dashboard(request):
         # Property selection data
         'available_properties': available_properties,
         'selected_property': selected_property,
+        # Tenant data
+        'recent_tenants': recent_tenants,
+        'total_tenant_count': total_tenant_count,
+        'tenants_with_expiring_leases': tenants_with_expiring_leases,
     }
     
     return render(request, "dashboards/landlord.html", context)
@@ -1959,3 +2034,204 @@ def vacant_units_detail(request):
     }
     
     return render(request, 'dashboards/vacant_units_detail.html', context)
+
+@login_required
+def tenant_list(request):
+    """Detailed view for tenant management"""
+    if not request.user.company:
+        messages.error(request, "You must be assigned to a company to access this page.")
+        return redirect("core:login")
+    
+    # Only allow landlords and employees to access this view
+    if request.user.role not in [User.Role.LANDLORD, User.Role.EMPLOYEE]:
+        messages.error(request, "You do not have permission to access this page.")
+        return redirect("core:dashboard_redirect")
+    
+    # Get filter parameters from URL
+    property_id = request.GET.get('property')
+    status_filter = request.GET.get('status')  # 'active', 'expiring_soon', 'all'
+    search_query = request.GET.get('search')
+    
+    selected_property = None
+    if property_id:
+        try:
+            from properties.models import Property
+            selected_property = Property.objects.get(
+                id=property_id, 
+                company=request.user.company
+            )
+        except Property.DoesNotExist:
+            selected_property = None
+    
+    # Base query for tenants
+    tenants_query = User.objects.filter(
+        company=request.user.company,
+        role=User.Role.TENANT
+    ).select_related(
+        'property',
+        'apartment_unit',
+        'apartment_unit__property'
+    ).prefetch_related(
+        'apartment_unit__payment_schedules'
+    ).order_by('last_name', 'first_name', 'username')
+    
+    # Apply property filter
+    if selected_property:
+        tenants_query = tenants_query.filter(apartment_unit__property=selected_property)
+    elif request.user.property:
+        tenants_query = tenants_query.filter(apartment_unit__property=request.user.property)
+    
+    # Apply search filter
+    if search_query:
+        tenants_query = tenants_query.filter(
+            Q(first_name__icontains=search_query) |
+            Q(last_name__icontains=search_query) |
+            Q(username__icontains=search_query) |
+            Q(email__icontains=search_query) |
+            Q(apartment_unit__unit_number__icontains=search_query)
+        )
+    
+    # Get all tenants
+    all_tenants = list(tenants_query)
+    
+    # Calculate lease expiration data and apply status filter
+    today = timezone.now().date()
+    
+    # Annotate tenants with lease expiration information
+    annotated_tenants = []
+    for tenant in all_tenants:
+        # Get active payment schedule (lease) for this tenant
+        active_lease = None
+        lease_status = 'no_lease'
+        days_until_expiration = None
+        lease_expiry_date = None
+        
+        # Try finding by tenant only first (more lenient approach)
+        active_lease = PaymentSchedule.objects.filter(
+            tenant=tenant,
+            is_active=True,
+            end_date__isnull=False
+        ).first()
+        
+        if active_lease and active_lease.end_date:
+            lease_expiry_date = active_lease.end_date
+            days_until_expiration = (active_lease.end_date - today).days
+            
+            if active_lease.end_date < today:
+                lease_status = 'expired'
+            elif days_until_expiration <= 30:
+                lease_status = 'expiring_soon'
+            else:
+                lease_status = 'active'
+        
+        # Apply status filter
+        if status_filter and status_filter != 'all':
+            if status_filter == 'active' and lease_status != 'active':
+                continue
+            elif status_filter == 'expiring_soon' and lease_status != 'expiring_soon':
+                continue
+            elif status_filter == 'expired' and lease_status != 'expired':
+                continue
+        
+        annotated_tenants.append({
+            'tenant': tenant,
+            'active_lease': active_lease,
+            'lease_status': lease_status,
+            'days_until_expiration': days_until_expiration,
+            'lease_expiry_date': lease_expiry_date,
+        })
+    
+    # Calculate tenant statistics
+    base_count_query = User.objects.filter(
+        company=request.user.company,
+        role=User.Role.TENANT
+    )
+    if selected_property:
+        base_count_query = base_count_query.filter(apartment_unit__property=selected_property)
+    elif request.user.property:
+        base_count_query = base_count_query.filter(apartment_unit__property=request.user.property)
+    
+    total_tenants = base_count_query.count()
+    tenants_with_units = base_count_query.filter(apartment_unit__isnull=False).count()
+    tenants_without_units = base_count_query.filter(apartment_unit__isnull=True).count()
+    
+    # Lease status counts - need to count all tenant data, not just filtered results
+    # Get all tenants for proper counting (before any status filtering)
+    all_tenants_for_count = list(User.objects.filter(
+        company=request.user.company,
+        role=User.Role.TENANT
+    ).select_related('apartment_unit', 'apartment_unit__property'))
+    
+    # Apply property filter for counting
+    if selected_property:
+        all_tenants_for_count = [t for t in all_tenants_for_count if t.apartment_unit and t.apartment_unit.property == selected_property]
+    elif request.user.property:
+        all_tenants_for_count = [t for t in all_tenants_for_count if t.apartment_unit and t.apartment_unit.property == request.user.property]
+    
+    leases_expiring_30_days = 0
+    leases_expiring_90_days = 0
+    active_leases = 0
+    expired_leases = 0
+    
+    for tenant in all_tenants_for_count:
+        # Use the same lenient approach for counting
+        active_lease = PaymentSchedule.objects.filter(
+            tenant=tenant,
+            is_active=True,
+            end_date__isnull=False
+        ).first()
+        
+        if active_lease and active_lease.end_date:
+                days_until_expiration = (active_lease.end_date - today).days
+                
+                if active_lease.end_date < today:
+                    expired_leases += 1
+                elif days_until_expiration <= 30:
+                    leases_expiring_30_days += 1
+                    active_leases += 1  # Expiring soon is still active
+                else:
+                    active_leases += 1
+                
+                # Count towards 90-day expiration if within 90 days
+                if days_until_expiration <= 90 and active_lease.end_date >= today:
+                    leases_expiring_90_days += 1
+    
+    # Get available properties for filter dropdown
+    from properties.models import Property
+    available_properties = Property.objects.filter(company=request.user.company)
+    if request.user.property:
+        available_properties = available_properties.filter(id=request.user.property.id)
+    
+    # Property breakdown (if showing all properties)
+    property_breakdown = None
+    if not selected_property and request.user.role == User.Role.LANDLORD:
+        property_breakdown = available_properties.annotate(
+            tenant_count=Count('units__tenant', filter=Q(units__tenant__role=User.Role.TENANT))
+        ).order_by('name')
+    
+    context = {
+        'annotated_tenants': annotated_tenants,
+        'selected_property': selected_property,
+        'available_properties': available_properties,
+        'status_filter': status_filter,
+        'search_query': search_query,
+        'total_tenants': total_tenants,
+        'tenants_with_units': tenants_with_units,
+        'tenants_without_units': tenants_without_units,
+        'leases_expiring_30_days': leases_expiring_30_days,
+        'leases_expiring_90_days': leases_expiring_90_days,
+        'active_leases': active_leases,
+        'expired_leases': expired_leases,
+        'property_breakdown': property_breakdown,
+        'today': today,
+        'filtered_count': len(annotated_tenants),
+        # Filter choices
+        'status_choices': [
+            ('all', 'All Tenants'),
+            ('active', 'Active Leases'),
+            ('expiring_soon', 'Expiring Soon (≤30 days)'),
+            ('expired', 'Expired Leases'),
+        ],
+    }
+    
+    return render(request, 'dashboards/tenant_list.html', context)

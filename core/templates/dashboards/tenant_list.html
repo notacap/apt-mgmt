@@ -1,0 +1,329 @@
+{% extends "base.html" %}
+
+{% block title %}Tenant Management{% endblock %}
+
+{% block content %}
+<div class="container mx-auto max-w-7xl">
+    <!-- Header with Property Selector and Filters -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 space-y-4 sm:space-y-0">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Tenant Management</h1>
+            <p class="text-gray-600 dark:text-gray-400 mt-1">Manage tenants and view lease information</p>
+        </div>
+        
+        <!-- Actions -->
+        <div class="flex items-center space-x-4">
+            <a href="{% url 'core:landlord_dashboard' %}{% if selected_property %}?property={{ selected_property.id }}{% endif %}" 
+               class="bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                ← Back to Dashboard
+            </a>
+            <a href="{% url 'core:send_invitation' %}" 
+               class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                Add New Tenant
+            </a>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <!-- Total Tenants -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-1">
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Total Tenants</p>
+                    <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">{{ total_tenants }}</p>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ tenants_with_units }} with units</p>
+                </div>
+                <div class="flex-shrink-0">
+                    <div class="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Leases -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-1">
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Active Leases</p>
+                    <p class="mt-2 text-3xl font-bold text-green-600 dark:text-green-400">{{ active_leases }}</p>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Currently active</p>
+                </div>
+                <div class="flex-shrink-0">
+                    <div class="w-10 h-10 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Expiring Soon -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-1">
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Expiring Soon</p>
+                    <p class="mt-2 text-3xl font-bold text-yellow-600 dark:text-yellow-400">{{ leases_expiring_30_days }}</p>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Next 30 days</p>
+                </div>
+                <div class="flex-shrink-0">
+                    <div class="w-10 h-10 bg-yellow-100 dark:bg-yellow-900 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.19 2.5 1.732 2.5z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Expired Leases -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-1">
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Expired Leases</p>
+                    <p class="mt-2 text-3xl font-bold text-red-600 dark:text-red-400">{{ expired_leases }}</p>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Need attention</p>
+                </div>
+                <div class="flex-shrink-0">
+                    <div class="w-10 h-10 bg-red-100 dark:bg-red-900 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow mb-8">
+        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Filters</h3>
+        </div>
+        <div class="p-6">
+            <form method="get" class="flex flex-wrap gap-4">
+                <!-- Property Filter -->
+                <div class="flex-1 min-w-48">
+                    <label for="property" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Property</label>
+                    <select name="property" id="property" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+                        <option value="">All Properties</option>
+                        {% for prop in available_properties %}
+                            <option value="{{ prop.id }}" {% if selected_property and selected_property.id == prop.id %}selected{% endif %}>
+                                {{ prop.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Status Filter -->
+                <div class="flex-1 min-w-48">
+                    <label for="status" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Lease Status</label>
+                    <select name="status" id="status" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+                        {% for value, label in status_choices %}
+                            <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Search -->
+                <div class="flex-1 min-w-64">
+                    <label for="search" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Search</label>
+                    <input type="text" name="search" id="search" value="{{ search_query|default:'' }}" 
+                           placeholder="Search by name, email, or unit..." 
+                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+                </div>
+
+                <!-- Actions -->
+                <div class="flex items-end space-x-2">
+                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        Apply Filters
+                    </button>
+                    <a href="{% url 'core:tenant_list' %}{% if selected_property %}?property={{ selected_property.id }}{% endif %}" 
+                       class="bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                        Clear
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tenant List -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                    Tenants ({{ filtered_count }})
+                </h3>
+            </div>
+        </div>
+
+        {% if annotated_tenants %}
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead class="bg-gray-50 dark:bg-gray-900">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tenant</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Unit</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Property</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Lease Status</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Lease Expiry</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Contact</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                        {% for item in annotated_tenants %}
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center">
+                                        <div class="flex-shrink-0 h-10 w-10">
+                                            <div class="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                                                <span class="text-sm font-medium text-blue-600 dark:text-blue-400">
+                                                    {{ item.tenant.get_full_name|default:item.tenant.username|slice:":1"|upper }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div class="ml-4">
+                                            <div class="text-sm font-medium text-gray-900 dark:text-white">
+                                                {{ item.tenant.get_full_name|default:item.tenant.username }}
+                                            </div>
+                                            <div class="text-sm text-gray-500 dark:text-gray-400">
+                                                Joined {{ item.tenant.date_joined|date:"M d, Y" }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    {% if item.tenant.apartment_unit %}
+                                        <div class="text-sm font-medium text-gray-900 dark:text-white">
+                                            Unit {{ item.tenant.apartment_unit.unit_number }}
+                                        </div>
+                                        <div class="text-sm text-gray-500 dark:text-gray-400">
+                                            {{ item.tenant.apartment_unit.bedrooms }} bed, {{ item.tenant.apartment_unit.bathrooms }} bath
+                                        </div>
+                                    {% else %}
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
+                                            No Unit
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    {% if item.tenant.apartment_unit %}
+                                        <div class="text-sm text-gray-900 dark:text-white">
+                                            {{ item.tenant.apartment_unit.property.name }}
+                                        </div>
+                                    {% else %}
+                                        <span class="text-sm text-gray-500 dark:text-gray-400">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    {% if item.lease_status == 'active' %}
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                            Active
+                                        </span>
+                                    {% elif item.lease_status == 'expiring_soon' %}
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                                            Expiring Soon
+                                        </span>
+                                    {% elif item.lease_status == 'expired' %}
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                                            Expired
+                                        </span>
+                                    {% else %}
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
+                                            No Lease
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    {% if item.lease_expiry_date %}
+                                        <div class="text-sm text-gray-900 dark:text-white">
+                                            {{ item.lease_expiry_date|date:"M d, Y" }}
+                                        </div>
+                                        {% if item.days_until_expiration is not None %}
+                                            <div class="text-sm text-gray-500 dark:text-gray-400">
+                                                {% if item.days_until_expiration < 0 %}
+                                                    {{ item.days_until_expiration|floatformat:0|slice:"1:" }} days ago
+                                                {% elif item.days_until_expiration == 0 %}
+                                                    Expires today
+                                                {% else %}
+                                                    {{ item.days_until_expiration }} days
+                                                {% endif %}
+                                            </div>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-sm text-gray-500 dark:text-gray-400">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900 dark:text-white">
+                                        {{ item.tenant.email }}
+                                    </div>
+                                    {% if item.tenant.phone_number %}
+                                        <div class="text-sm text-gray-500 dark:text-gray-400">
+                                            {{ item.tenant.phone_number }}
+                                        </div>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-12">
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"></path>
+                </svg>
+                <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No tenants found</h3>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    {% if search_query or status_filter != 'all' %}
+                        Try adjusting your filters to see more results.
+                    {% else %}
+                        Get started by adding your first tenant.
+                    {% endif %}
+                </p>
+                <div class="mt-6">
+                    <a href="{% url 'core:send_invitation' %}" 
+                       class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Add New Tenant
+                    </a>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Property Breakdown (if showing all properties) -->
+    {% if property_breakdown and not selected_property %}
+        <div class="mt-8 bg-white dark:bg-gray-800 rounded-lg shadow">
+            <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">By Property</h3>
+            </div>
+            <div class="p-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {% for property in property_breakdown %}
+                        <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                            <h4 class="font-medium text-gray-900 dark:text-white mb-2">{{ property.name }}</h4>
+                            <div class="text-sm text-gray-600 dark:text-gray-400">
+                                <div class="flex justify-between">
+                                    <span>Tenants:</span>
+                                    <span class="font-medium">{{ property.tenant_count }}</span>
+                                </div>
+                            </div>
+                            <div class="mt-2">
+                                <a href="{% url 'core:tenant_list' %}?property={{ property.id }}" 
+                                   class="text-blue-600 dark:text-blue-400 hover:underline text-sm">
+                                    View Property Tenants →
+                                </a>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
