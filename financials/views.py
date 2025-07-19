@@ -113,9 +113,17 @@ def edit_payment_schedule(request, pk):
     if request.method == 'POST':
         form = PaymentScheduleForm(request.POST, instance=schedule, user=request.user)
         if form.is_valid():
-            form.save()
-            messages.success(request, "Payment schedule updated successfully.")
-            return redirect('financials:payment_schedule_detail', pk=schedule.pk)
+            try:
+                form.save()
+                messages.success(request, "Payment schedule updated successfully.")
+                return redirect('financials:payment_schedule_detail', pk=schedule.pk)
+            except Exception as e:
+                messages.error(request, f"Error saving payment schedule: {str(e)}")
+        else:
+            # Add error messages for debugging
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f"{field}: {error}")
     else:
         form = PaymentScheduleForm(instance=schedule, user=request.user)
     

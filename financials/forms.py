@@ -44,6 +44,22 @@ class PaymentScheduleForm(forms.ModelForm):
                 if user.property:
                     units = units.filter(property=user.property)
                 self.fields['apartment_unit'].queryset = units
+                
+                # If this is an editing form and we have an instance, make sure current values are included
+                if self.instance and self.instance.pk:
+                    # Ensure current tenant is in queryset even if property filtering would exclude them
+                    if self.instance.tenant not in tenants:
+                        tenants = tenants.union(User.objects.filter(pk=self.instance.tenant.pk))
+                        self.fields['tenant'].queryset = tenants
+                    
+                    # Ensure current apartment_unit is in queryset even if property filtering would exclude it
+                    if self.instance.apartment_unit not in units:
+                        units = units.union(ApartmentUnit.objects.filter(pk=self.instance.apartment_unit.pk))
+                        self.fields['apartment_unit'].queryset = units
+                    
+                    # For editing, make tenant and apartment_unit read-only to prevent changing key relationships
+                    self.fields['tenant'].disabled = True
+                    self.fields['apartment_unit'].disabled = True
 
 
 class RentPaymentForm(forms.ModelForm):

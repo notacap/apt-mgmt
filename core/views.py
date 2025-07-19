@@ -687,6 +687,82 @@ def tenant_dashboard(request):
         participants=request.user
     ).prefetch_related('participants', 'messages').order_by('-updated_at')[:5]
     
+    # Rent status data for tenant
+    current_schedule = PaymentSchedule.objects.filter(
+        tenant=request.user,
+        is_active=True
+    ).select_related('apartment_unit', 'apartment_unit__property').first()
+    
+    # Calculate lease status
+    lease_status = 'no_lease'
+    days_until_lease_end = None
+    lease_end_date = None
+    
+    if current_schedule and current_schedule.end_date:
+        today = timezone.now().date()
+        lease_end_date = current_schedule.end_date
+        days_until_lease_end = (current_schedule.end_date - today).days
+        
+        if current_schedule.end_date < today:
+            lease_status = 'expired'
+        elif days_until_lease_end <= 30:
+            lease_status = 'expiring_soon'
+        else:
+            lease_status = 'active'
+    
+    # Get next upcoming payment
+    next_payment = RentPayment.objects.filter(
+        payment_schedule__tenant=request.user,
+        status__in=['PENDING'],
+        due_date__gte=timezone.now().date()
+    ).order_by('due_date').first()
+    
+    # If no next payment exists but we have a schedule, calculate the next due date
+    next_due_date = None
+    next_amount = None
+    if not next_payment and current_schedule:
+        today = timezone.now().date()
+        
+        # Calculate next payment due date based on schedule
+        if current_schedule.frequency == 'MONTHLY':
+            # Find next month's payment date
+            year = today.year
+            month = today.month
+            day = current_schedule.payment_day
+            
+            # If this month's payment day hasn't passed, use this month
+            if today.day <= day:
+                next_due_date = date(year, month, day)
+            else:
+                # Move to next month
+                if month == 12:
+                    year += 1
+                    month = 1
+                else:
+                    month += 1
+                next_due_date = date(year, month, day)
+            
+            next_amount = current_schedule.rent_amount
+    
+    # Get recent payment status for display
+    recent_payment = RentPayment.objects.filter(
+        payment_schedule__tenant=request.user
+    ).order_by('-due_date').first()
+    
+    # Count unread messages
+    unread_message_count = 0
+    total_message_count = 0
+    for thread in recent_message_threads:
+        total_message_count += 1
+        # Calculate unread messages for this tenant
+        unread_for_user = thread.messages.exclude(
+            read_by=request.user
+        ).exclude(
+            sender=request.user
+        ).count()
+        if unread_for_user > 0:
+            unread_message_count += 1
+    
     context = {
         'personal_documents': personal_documents,
         'shared_documents': shared_documents,
@@ -703,6 +779,17 @@ def tenant_dashboard(request):
         'recent_maintenance_requests': recent_maintenance_requests,
         # Communication data
         'recent_message_threads': recent_message_threads,
+        'unread_message_count': unread_message_count,
+        'total_message_count': total_message_count,
+        # Rent status data
+        'current_schedule': current_schedule,
+        'lease_status': lease_status,
+        'days_until_lease_end': days_until_lease_end,
+        'lease_end_date': lease_end_date,
+        'next_payment': next_payment,
+        'next_due_date': next_due_date,
+        'next_amount': next_amount,
+        'recent_payment': recent_payment,
     }
     
     return render(request, "dashboards/tenant.html", context)
@@ -2235,3 +2322,228 @@ def tenant_list(request):
     }
     
     return render(request, 'dashboards/tenant_list.html', context)
+
+@login_required
+def tenant_rent_status_detail(request):
+    """Detailed view for tenant rent status and payment history"""
+    if not request.user.company:
+        messages.error(request, "You must be assigned to a company to access this page.")
+        return redirect("core:login")
+    
+    # Only allow tenants to access this view
+    if request.user.role != User.Role.TENANT:
+        messages.error(request, "You do not have permission to access this page.")
+        return redirect("core:dashboard_redirect")
+    
+    # Get filter parameters from URL
+    status_filter = request.GET.get('status', 'all')  # 'all', 'pending', 'paid', 'overdue'
+    period_filter = request.GET.get('period', '12')  # months to show
+    
+    # Date calculations
+    today = timezone.now().date()
+    period_months = int(period_filter) if period_filter.isdigit() else 12
+    start_date = today - timedelta(days=period_months * 30)  # Approximate months to days
+    
+    # Get tenant's payment schedule (current lease info)
+    current_schedule = PaymentSchedule.objects.filter(
+        tenant=request.user,
+        is_active=True
+    ).select_related('apartment_unit', 'apartment_unit__property').first()
+    
+    # Get tenant's payment history
+    payments_query = RentPayment.objects.filter(
+        payment_schedule__tenant=request.user
+    ).select_related('payment_schedule', 'payment_schedule__apartment_unit')
+    
+    # Apply date filter
+    payments_query = payments_query.filter(due_date__gte=start_date)
+    
+    # Apply status filter
+    if status_filter != 'all':
+        payments_query = payments_query.filter(status=status_filter.upper())
+    
+    # Order by due date (most recent first)
+    payments = payments_query.order_by('-due_date')
+    
+    # Calculate payment statistics
+    all_payments = RentPayment.objects.filter(
+        payment_schedule__tenant=request.user,
+        due_date__gte=start_date
+    )
+    
+    total_payments = all_payments.count()
+    paid_payments = all_payments.filter(status='PAID').count()
+    pending_payments = all_payments.filter(status='PENDING').count()
+    overdue_payments = all_payments.filter(status='OVERDUE').count()
+    partial_payments = all_payments.filter(status='PARTIAL').count()
+    failed_payments = all_payments.filter(status='FAILED').count()
+    
+    # Calculate totals
+    total_amount_due = all_payments.aggregate(Sum('amount_due'))['amount_due__sum'] or Decimal('0.00')
+    total_amount_paid = all_payments.aggregate(Sum('amount_paid'))['amount_paid__sum'] or Decimal('0.00')
+    outstanding_balance = total_amount_due - total_amount_paid
+    
+    # Calculate payment performance percentage
+    payment_rate = 0
+    if total_payments > 0:
+        payment_rate = round((paid_payments / total_payments) * 100)
+    
+    # Get next upcoming payment
+    next_payment = RentPayment.objects.filter(
+        payment_schedule__tenant=request.user,
+        status__in=['PENDING'],
+        due_date__gte=today
+    ).order_by('due_date').first()
+    
+    # If no next payment exists but we have a schedule, calculate the next due date
+    calculated_next_payment = None
+    if not next_payment and current_schedule:
+        
+        # Calculate next payment due date based on schedule
+        if current_schedule.frequency == 'MONTHLY':
+            # Find next month's payment date
+            year = today.year
+            month = today.month
+            day = current_schedule.payment_day
+            
+            # If this month's payment day hasn't passed, use this month
+            if today.day <= day:
+                calculated_due_date = date(year, month, day)
+            else:
+                # Move to next month
+                if month == 12:
+                    year += 1
+                    month = 1
+                else:
+                    month += 1
+                calculated_due_date = date(year, month, day)
+            
+            # Create a simulated payment object for display
+            calculated_next_payment = {
+                'due_date': calculated_due_date,
+                'amount_due': current_schedule.rent_amount,
+                'status': 'PENDING'
+            }
+    
+    # Calculate lease information
+    lease_status = 'no_lease'
+    days_until_lease_end = None
+    lease_end_date = None
+    
+    if current_schedule and current_schedule.end_date:
+        lease_end_date = current_schedule.end_date
+        days_until_lease_end = (current_schedule.end_date - today).days
+        
+        if current_schedule.end_date < today:
+            lease_status = 'expired'
+        elif days_until_lease_end <= 30:
+            lease_status = 'expiring_soon'
+        else:
+            lease_status = 'active'
+    
+    # Payment method breakdown (last 12 months)
+    payment_method_breakdown = all_payments.values('payment_method').annotate(
+        count=Count('id'),
+        total_amount=Sum('amount_paid')
+    ).order_by('-count')
+    
+    # Monthly payment trend (last 12 months)
+    monthly_trends = []
+    for i in range(12):
+        month_start = today.replace(day=1) - timedelta(days=i*30)
+        month_end = month_start + timedelta(days=31)
+        
+        month_payments = all_payments.filter(
+            due_date__gte=month_start,
+            due_date__lt=month_end
+        )
+        
+        month_total = month_payments.aggregate(Sum('amount_paid'))['amount_paid__sum'] or Decimal('0.00')
+        month_due = month_payments.aggregate(Sum('amount_due'))['amount_due__sum'] or Decimal('0.00')
+        
+        monthly_trends.append({
+            'month': month_start.strftime('%b %Y'),
+            'amount_paid': month_total,
+            'amount_due': month_due,
+            'payment_count': month_payments.count()
+        })
+    
+    monthly_trends.reverse()  # Show oldest to newest
+    
+    # Recent payment activity (last 5 transactions)
+    recent_payments = all_payments.order_by('-updated_at')[:5]
+    
+    # Add payment status information to each payment
+    annotated_payments = []
+    for payment in payments:
+        days_overdue = 0
+        urgency = 'none'
+        
+        if payment.status == 'OVERDUE' and payment.due_date:
+            days_overdue = (today - payment.due_date).days
+            if days_overdue > 30:
+                urgency = 'high'
+            elif days_overdue > 7:
+                urgency = 'medium'
+            else:
+                urgency = 'low'
+        elif payment.status == 'PENDING' and payment.due_date:
+            days_until_due = (payment.due_date - today).days
+            if days_until_due <= 3:
+                urgency = 'medium'
+            elif days_until_due <= 7:
+                urgency = 'low'
+        
+        annotated_payments.append({
+            'payment': payment,
+            'days_overdue': days_overdue,
+            'urgency': urgency
+        })
+    
+    context = {
+        'current_schedule': current_schedule,
+        'annotated_payments': annotated_payments,
+        'recent_payments': recent_payments,
+        'next_payment': next_payment,
+        'calculated_next_payment': calculated_next_payment,
+        'status_filter': status_filter,
+        'period_filter': period_filter,
+        # Payment statistics
+        'total_payments': total_payments,
+        'paid_payments': paid_payments,
+        'pending_payments': pending_payments,
+        'overdue_payments': overdue_payments,
+        'partial_payments': partial_payments,
+        'failed_payments': failed_payments,
+        'payment_rate': payment_rate,
+        # Financial totals
+        'total_amount_due': total_amount_due,
+        'total_amount_paid': total_amount_paid,
+        'outstanding_balance': outstanding_balance,
+        # Lease information
+        'lease_status': lease_status,
+        'days_until_lease_end': days_until_lease_end,
+        'lease_end_date': lease_end_date,
+        # Trends and breakdowns
+        'payment_method_breakdown': payment_method_breakdown,
+        'monthly_trends': monthly_trends,
+        'today': today,
+        'filtered_count': len(annotated_payments),
+        # Filter choices
+        'status_choices': [
+            ('all', 'All Payments'),
+            ('pending', 'Pending'),
+            ('paid', 'Paid'),
+            ('overdue', 'Overdue'),
+            ('partial', 'Partial'),
+            ('failed', 'Failed'),
+        ],
+        'period_choices': [
+            ('3', 'Last 3 Months'),
+            ('6', 'Last 6 Months'),
+            ('12', 'Last 12 Months'),
+            ('24', 'Last 24 Months'),
+        ],
+    }
+    
+    return render(request, 'dashboards/tenant_rent_status_detail.html', context)

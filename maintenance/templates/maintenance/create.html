@@ -5,10 +5,10 @@
 
 {% block content %}
 <div class="max-w-4xl mx-auto py-6">
-    <div class="bg-white shadow rounded-lg">
-        <div class="px-6 py-4 border-b border-gray-200">
-            <h1 class="text-xl font-semibold text-gray-900">Submit Maintenance Request</h1>
-            <p class="mt-1 text-sm text-gray-600">Describe the maintenance issue and upload photos if helpful.</p>
+    <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <h1 class="text-xl font-semibold text-gray-900 dark:text-white">Submit Maintenance Request</h1>
+            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Describe the maintenance issue and upload photos if helpful.</p>
         </div>
 
         <form method="post" enctype="multipart/form-data" class="px-6 py-4">
@@ -18,20 +18,20 @@
                 <!-- Basic Information -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <label for="{{ form.title.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                        <label for="{{ form.title.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                             Title <span class="text-red-500">*</span>
                         </label>
-                        {{ form.title }}
+                        {{ form.title|add_form_control }}
                         {% if form.title.errors %}
                             <div class="mt-1 text-sm text-red-600">{{ form.title.errors.0 }}</div>
                         {% endif %}
                     </div>
 
                     <div>
-                        <label for="{{ form.category.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                        <label for="{{ form.category.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                             Category <span class="text-red-500">*</span>
                         </label>
-                        {{ form.category }}
+                        {{ form.category|add_form_control }}
                         {% if form.category.errors %}
                             <div class="mt-1 text-sm text-red-600">{{ form.category.errors.0 }}</div>
                         {% endif %}
@@ -39,10 +39,10 @@
                 </div>
 
                 <div>
-                    <label for="{{ form.description.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                    <label for="{{ form.description.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                         Description <span class="text-red-500">*</span>
                     </label>
-                    {{ form.description }}
+                    {{ form.description|add_form_control }}
                     {% if form.description.errors %}
                         <div class="mt-1 text-sm text-red-600">{{ form.description.errors.0 }}</div>
                     {% endif %}
@@ -51,20 +51,20 @@
                 <!-- Location Details -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <label for="{{ form.apartment_unit.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                        <label for="{{ form.apartment_unit.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                             Apartment Unit
                         </label>
-                        {{ form.apartment_unit }}
+                        {{ form.apartment_unit|add_form_control }}
                         {% if form.apartment_unit.errors %}
                             <div class="mt-1 text-sm text-red-600">{{ form.apartment_unit.errors.0 }}</div>
                         {% endif %}
                     </div>
 
                     <div>
-                        <label for="{{ form.location_details.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                        <label for="{{ form.location_details.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                             Specific Location
                         </label>
-                        {{ form.location_details }}
+                        {{ form.location_details|add_form_control }}
                         {% if form.location_details.errors %}
                             <div class="mt-1 text-sm text-red-600">{{ form.location_details.errors.0 }}</div>
                         {% endif %}
@@ -72,36 +72,36 @@
                 </div>
 
                 <div>
-                    <label for="{{ form.priority.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                    <label for="{{ form.priority.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                         Priority <span class="text-red-500">*</span>
                     </label>
-                    {{ form.priority }}
+                    {{ form.priority|add_form_control }}
                     {% if form.priority.errors %}
                         <div class="mt-1 text-sm text-red-600">{{ form.priority.errors.0 }}</div>
                     {% endif %}
-                    <p class="mt-1 text-sm text-gray-500">Emergency requests will be prioritized automatically based on category.</p>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Emergency requests will be prioritized automatically based on category.</p>
                 </div>
 
                 <!-- Photo Upload Section -->
                 <div>
-                    <h3 class="text-lg font-medium text-gray-900 mb-4">Photos (Optional)</h3>
-                    <p class="text-sm text-gray-600 mb-4">Upload up to 5 photos to help describe the issue.</p>
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Photos (Optional)</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Upload up to 5 photos to help describe the issue.</p>
                     
                     <div class="space-y-4" id="photo-forms">
                         {{ photo_formset.management_form }}
                         {% for photo_form in photo_formset %}
-                            <div class="photo-form border border-gray-200 rounded-lg p-4">
+                            <div class="photo-form border border-gray-200 dark:border-gray-600 rounded-lg p-4">
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700">Photo</label>
-                                        {{ photo_form.photo }}
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Photo</label>
+                                        {{ photo_form.photo|add_form_control }}
                                         {% if photo_form.photo.errors %}
                                             <div class="mt-1 text-sm text-red-600">{{ photo_form.photo.errors.0 }}</div>
                                         {% endif %}
                                     </div>
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700">Caption</label>
-                                        {{ photo_form.caption }}
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Caption</label>
+                                        {{ photo_form.caption|add_form_control }}
                                         {% if photo_form.caption.errors %}
                                             <div class="mt-1 text-sm text-red-600">{{ photo_form.caption.errors.0 }}</div>
                                         {% endif %}
@@ -113,13 +113,13 @@
                 </div>
 
                 <!-- Form Actions -->
-                <div class="flex justify-end space-x-3 pt-6 border-t border-gray-200">
+                <div class="flex justify-end space-x-3 pt-6 border-t border-gray-200 dark:border-gray-700">
                     <a href="{% url 'maintenance:list' %}" 
-                       class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                       class="bg-white dark:bg-gray-700 py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800">
                         Cancel
                     </a>
                     <button type="submit" 
-                            class="bg-indigo-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            class="bg-indigo-600 dark:bg-indigo-700 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-indigo-700 dark:hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800">
                         Submit Request
                     </button>
                 </div>

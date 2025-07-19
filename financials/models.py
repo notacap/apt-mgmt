@@ -52,6 +52,36 @@ class PaymentSchedule(models.Model):
         """Get the current rent amount set on the apartment unit"""
         return self.apartment_unit.rent_amount if self.apartment_unit else Decimal('0.00')
     
+    @property
+    def status(self):
+        """Get the actual status of the payment schedule based on dates and is_active flag"""
+        from django.utils import timezone
+        today = timezone.now().date()
+        
+        if not self.is_active:
+            return "Inactive"
+        
+        if self.start_date > today:
+            return "Pending Start"
+        
+        if self.end_date and self.end_date < today:
+            return "Expired"
+        
+        return "Active"
+    
+    @property
+    def status_class(self):
+        """Get CSS class for status display"""
+        status = self.status
+        if status == "Active":
+            return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+        elif status == "Pending Start":
+            return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+        elif status == "Expired":
+            return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+        else:  # Inactive
+            return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
+    
     def save(self, *args, **kwargs):
         # If no rent_amount is set, use the apartment unit's rent amount
         if not self.rent_amount and self.apartment_unit:

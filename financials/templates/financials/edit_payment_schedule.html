@@ -22,21 +22,32 @@
         <form method="post" class="space-y-6">
             {% csrf_token %}
             
-            <!-- Current Tenant Info (Read-only) -->
+            <!-- Current Tenant and Unit Assignment -->
             <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
-                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-3">Current Assignment</h3>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-3">Assignment (Read-Only)</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Tenant Field (Hidden but maintains form structure) -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Tenant</label>
-                        <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ schedule.tenant.get_full_name|default:schedule.tenant.username }}</p>
+                        <label for="{{ form.tenant.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            {{ form.tenant.label }}
+                        </label>
+                        {{ form.tenant|add_form_control }}
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Cannot be changed after creation</p>
+                        {% for error in form.tenant.errors %}
+                            <p class="mt-2 text-xs text-red-600 dark:text-red-400">{{ error }}</p>
+                        {% endfor %}
                     </div>
+                    
+                    <!-- Apartment Unit Field (Hidden but maintains form structure) -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Property</label>
-                        <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ schedule.apartment_unit.property.name }}</p>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Unit</label>
-                        <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ schedule.apartment_unit }}</p>
+                        <label for="{{ form.apartment_unit.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            {{ form.apartment_unit.label }}
+                        </label>
+                        {{ form.apartment_unit|add_form_control }}
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Cannot be changed after creation</p>
+                        {% for error in form.apartment_unit.errors %}
+                            <p class="mt-2 text-xs text-red-600 dark:text-red-400">{{ error }}</p>
+                        {% endfor %}
                     </div>
                 </div>
             </div>
