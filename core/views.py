@@ -8,7 +8,7 @@ from users.forms import LandlordCreationForm, InvitationForm, UserProfileForm, I
 from users.models import User, Invitation
 from django.contrib.auth.models import Group
 from documents.models import Document, DocumentShare
-from maintenance.models import MaintenanceRequest
+from maintenance.models import MaintenanceRequest, MaintenanceInvoice
 from communication.models import MessageThread
 from properties.models import ApartmentUnit
 from financials.models import PaymentSchedule, RentPayment, ExpenseRecord
@@ -117,7 +117,8 @@ def landlord_dashboard(request):
     last_month_income = current_month_income
     income_change_percent = 0  # No change for now since we're showing potential income
     
-    # Get expense data for the current month
+    # Get expense data for the current month from two sources:
+    # 1. ExpenseRecord objects
     expense_query = ExpenseRecord.objects.filter(
         property__company=request.user.company,
         expense_date__gte=current_month_start,
@@ -127,7 +128,24 @@ def landlord_dashboard(request):
     if request.user.property:
         expense_query = expense_query.filter(property=request.user.property)
     
-    current_month_expenses = expense_query.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+    expense_records_total = expense_query.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+    
+    # 2. MaintenanceInvoice objects
+    maintenance_invoice_query = MaintenanceInvoice.objects.filter(
+        maintenance_request__property__company=request.user.company,
+        invoice_date__gte=current_month_start,
+        invoice_date__lt=current_month_start + timedelta(days=32)
+    )
+    
+    if request.user.property:
+        maintenance_invoice_query = maintenance_invoice_query.filter(
+            maintenance_request__property=request.user.property
+        )
+    
+    maintenance_invoices_total = maintenance_invoice_query.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+    
+    # Total expenses = expense records + maintenance invoices
+    current_month_expenses = expense_records_total + maintenance_invoices_total
     
     # Calculate net revenue
     current_month_revenue = current_month_income - current_month_expenses
@@ -162,7 +180,16 @@ def landlord_dashboard(request):
                 expense_date__gte=current_month_start,
                 expense_date__lt=current_month_start + timedelta(days=32)
             )
-            current_month_expenses = expense_query.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+            expense_records_total = expense_query.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+            
+            maintenance_invoice_query = MaintenanceInvoice.objects.filter(
+                maintenance_request__property=selected_property,
+                invoice_date__gte=current_month_start,
+                invoice_date__lt=current_month_start + timedelta(days=32)
+            )
+            maintenance_invoices_total = maintenance_invoice_query.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+            
+            current_month_expenses = expense_records_total + maintenance_invoices_total
             current_month_revenue = current_month_income - current_month_expenses
             
             # Recalculate maintenance requests for selected property
@@ -205,6 +232,8 @@ def landlord_dashboard(request):
         'income_change_percent': income_change_percent,
         'current_month_expenses': current_month_expenses,
         'current_month_revenue': current_month_revenue,
+        'expense_records_total': expense_records_total if 'expense_records_total' in locals() else Decimal('0.00'),
+        'maintenance_invoices_total': maintenance_invoices_total if 'maintenance_invoices_total' in locals() else Decimal('0.00'),
         # Property selection data
         'available_properties': available_properties,
         'selected_property': selected_property,
@@ -737,3 +766,115 @@ def rent_income_detail(request):
     }
     
     return render(request, 'dashboards/rent_income_detail.html', context)
+
+@login_required
+def monthly_expenses_detail(request):
+    """Detailed view for monthly expenses metrics"""
+    if not request.user.company:
+        messages.error(request, "You must be assigned to a company to access this page.")
+        return redirect("core:login")
+    
+    # Only allow landlords and employees to access this view
+    if request.user.role not in [User.Role.LANDLORD, User.Role.EMPLOYEE]:
+        messages.error(request, "You do not have permission to access this page.")
+        return redirect("core:dashboard_redirect")
+    
+    # Get property filter from URL parameter
+    property_id = request.GET.get('property')
+    selected_property = None
+    
+    if property_id:
+        try:
+            from properties.models import Property
+            selected_property = Property.objects.get(
+                id=property_id, 
+                company=request.user.company
+            )
+        except Property.DoesNotExist:
+            selected_property = None
+    
+    # Date range calculations
+    current_month_start = timezone.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    current_month_end = (current_month_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+    
+    # Base queries for expenses
+    expense_records_query = ExpenseRecord.objects.filter(
+        property__company=request.user.company
+    ).select_related('property', 'apartment_unit', 'created_by')
+    
+    maintenance_invoices_query = MaintenanceInvoice.objects.filter(
+        maintenance_request__property__company=request.user.company
+    ).select_related(
+        'maintenance_request__property',
+        'maintenance_request__apartment_unit',
+        'uploaded_by'
+    )
+    
+    # Apply property filter
+    if selected_property:
+        expense_records_query = expense_records_query.filter(property=selected_property)
+        maintenance_invoices_query = maintenance_invoices_query.filter(
+            maintenance_request__property=selected_property
+        )
+    elif request.user.property:
+        expense_records_query = expense_records_query.filter(property=request.user.property)
+        maintenance_invoices_query = maintenance_invoices_query.filter(
+            maintenance_request__property=request.user.property
+        )
+    
+    # Current month data
+    current_month_expense_records = expense_records_query.filter(
+        expense_date__gte=current_month_start,
+        expense_date__lte=current_month_end
+    ).order_by('-expense_date')
+    
+    current_month_maintenance_invoices = maintenance_invoices_query.filter(
+        invoice_date__gte=current_month_start,
+        invoice_date__lte=current_month_end
+    ).order_by('-invoice_date')
+    
+    # Calculate totals
+    expense_records_total = current_month_expense_records.aggregate(
+        total=Sum('amount')
+    )['total'] or Decimal('0.00')
+    
+    maintenance_invoices_total = current_month_maintenance_invoices.aggregate(
+        total=Sum('amount')
+    )['total'] or Decimal('0.00')
+    
+    total_expenses = expense_records_total + maintenance_invoices_total
+    
+    # Category breakdowns
+    expense_categories = current_month_expense_records.values('category').annotate(
+        total=Sum('amount'),
+        count=Count('id')
+    ).order_by('-total')
+    
+    # Get available properties for filter dropdown
+    from properties.models import Property
+    available_properties = Property.objects.filter(company=request.user.company)
+    if request.user.property:
+        available_properties = available_properties.filter(id=request.user.property.id)
+    
+    # Counts
+    total_expense_records = current_month_expense_records.count()
+    total_maintenance_invoices = current_month_maintenance_invoices.count()
+    total_entries = total_expense_records + total_maintenance_invoices
+    
+    context = {
+        'current_month_expense_records': current_month_expense_records,
+        'current_month_maintenance_invoices': current_month_maintenance_invoices,
+        'expense_records_total': expense_records_total,
+        'maintenance_invoices_total': maintenance_invoices_total,
+        'total_expenses': total_expenses,
+        'expense_categories': expense_categories,
+        'selected_property': selected_property,
+        'available_properties': available_properties,
+        'current_month_start': current_month_start,
+        'current_month_end': current_month_end,
+        'total_expense_records': total_expense_records,
+        'total_maintenance_invoices': total_maintenance_invoices,
+        'total_entries': total_entries,
+    }
+    
+    return render(request, 'dashboards/monthly_expenses_detail.html', context)

@@ -92,7 +92,7 @@
         </a>
 
         <!-- Monthly Expenses -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow duration-200">
+        <a href="{% url 'core:monthly_expenses_detail' %}{% if selected_property %}?property={{ selected_property.id }}{% endif %}" class="block bg-white dark:bg-gray-800 rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow duration-200">
             <div class="flex items-center">
                 <div class="flex-1">
                     <p class="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Monthly Expenses</p>
@@ -110,7 +110,7 @@
             <div class="mt-4 flex items-center">
                 <span class="text-sm text-gray-500 dark:text-gray-400">{% if current_month_expenses > 0 %}{{ current_month_expenses|floatformat:0 }} expense records{% else %}No expenses recorded{% endif %}</span>
             </div>
-        </div>
+        </a>
 
         <!-- Monthly Revenue -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow duration-200">

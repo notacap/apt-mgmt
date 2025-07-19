@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+
+{% block title %}Monthly Expenses - Detailed View{% endblock %}
+
+{% block content %}
+<div class="container mx-auto max-w-7xl">
+    <!-- Header with Navigation -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 space-y-4 sm:space-y-0">
+        <div>
+            <div class="flex items-center space-x-3 mb-2">
+                <a href="{% url 'core:landlord_dashboard' %}" class="text-blue-600 dark:text-blue-400 hover:underline">
+                    <svg class="w-5 h-5 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
+                    Back to Dashboard
+                </a>
+            </div>
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Monthly Expenses</h1>
+            <p class="text-gray-600 dark:text-gray-400 mt-1">
+                Detailed view for {{ current_month_start|date:"F Y" }}
+                {% if selected_property %} - {{ selected_property.name }}{% endif %}
+            </p>
+        </div>
+        
+        <!-- Property Filter -->
+        <div class="flex items-center space-x-4">
+            <div class="relative" x-data="{ open: false }">
+                <button @click="open = !open" class="flex items-center space-x-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <span>{{ selected_property.name|default:"All Properties" }}</span>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </button>
+                <div x-show="open" @click.away="open = false" x-transition class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-50 border border-gray-200 dark:border-gray-700">
+                    <a href="{% url 'core:monthly_expenses_detail' %}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 {% if not selected_property %}bg-blue-50 dark:bg-blue-900/20{% endif %}">All Properties</a>
+                    {% for property in available_properties %}
+                        <a href="{% url 'core:monthly_expenses_detail' %}?property={{ property.id }}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 {% if selected_property.id == property.id %}bg-blue-50 dark:bg-blue-900/20{% endif %}">{{ property.name }}</a>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <!-- Total Expenses -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-1">
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Total Expenses</p>
+                    <p class="mt-2 text-3xl font-bold text-red-600 dark:text-red-400">${{ total_expenses|floatformat:2 }}</p>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ total_entries }} expense{{ total_entries|pluralize:" record, records" }}</p>
+                </div>
+                <div class="flex-shrink-0">
+                    <div class="w-10 h-10 bg-red-100 dark:bg-red-900 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Maintenance Costs -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-1">
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Maintenance Costs</p>
+                    <p class="mt-2 text-3xl font-bold text-orange-600 dark:text-orange-400">${{ maintenance_invoices_total|floatformat:2 }}</p>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ total_maintenance_invoices }} invoice{{ total_maintenance_invoices|pluralize }}</p>
+                </div>
+                <div class="flex-shrink-0">
+                    <div class="w-10 h-10 bg-orange-100 dark:bg-orange-900 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- General Expenses -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-1">
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">General Expenses</p>
+                    <p class="mt-2 text-3xl font-bold text-purple-600 dark:text-purple-400">${{ expense_records_total|floatformat:2 }}</p>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ total_expense_records }} record{{ total_expense_records|pluralize }}</p>
+                </div>
+                <div class="flex-shrink-0">
+                    <div class="w-10 h-10 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Maintenance Invoices -->
+    {% if current_month_maintenance_invoices %}
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow mb-8">
+        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Maintenance Invoices</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">{{ total_maintenance_invoices }} invoice{{ total_maintenance_invoices|pluralize }} - ${{ maintenance_invoices_total|floatformat:2 }} total</p>
+                </div>
+                <div class="flex space-x-2">
+                    <a href="{% url 'maintenance:list' %}" class="bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500">
+                        Manage Maintenance
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead class="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Vendor</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Property/Unit</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Invoice #</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Amount</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Maintenance Request</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {% for invoice in current_month_maintenance_invoices %}
+                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm font-medium text-gray-900 dark:text-white">{{ invoice.vendor_name }}</div>
+                                {% if invoice.description %}
+                                    <div class="text-sm text-gray-500 dark:text-gray-400">{{ invoice.description|truncatechars:50 }}</div>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-900 dark:text-white">{{ invoice.maintenance_request.property.name }}</div>
+                                {% if invoice.maintenance_request.apartment_unit %}
+                                    <div class="text-sm text-gray-500 dark:text-gray-400">Unit {{ invoice.maintenance_request.apartment_unit.unit_number }}</div>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                                {{ invoice.invoice_number }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                                ${{ invoice.amount|floatformat:2 }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                                {{ invoice.invoice_date|date:"M j, Y" }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <a href="{% url 'maintenance:detail' invoice.maintenance_request.pk %}" class="text-blue-600 dark:text-blue-400 hover:underline text-sm">
+                                    {{ invoice.maintenance_request.title|truncatechars:30 }}
+                                </a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- General Expense Records -->
+    {% if current_month_expense_records %}
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">General Expense Records</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">{{ total_expense_records }} record{{ total_expense_records|pluralize }} - ${{ expense_records_total|floatformat:2 }} total</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead class="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Category</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Description</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Property/Unit</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Amount</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Vendor</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {% for expense in current_month_expense_records %}
+                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 rounded-full">
+                                    {{ expense.get_category_display }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="text-sm font-medium text-gray-900 dark:text-white">{{ expense.description }}</div>
+                                {% if expense.notes %}
+                                    <div class="text-sm text-gray-500 dark:text-gray-400">{{ expense.notes|truncatechars:50 }}</div>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-900 dark:text-white">{{ expense.property.name }}</div>
+                                {% if expense.apartment_unit %}
+                                    <div class="text-sm text-gray-500 dark:text-gray-400">Unit {{ expense.apartment_unit.unit_number }}</div>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                                ${{ expense.amount|floatformat:2 }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                                {{ expense.expense_date|date:"M j, Y" }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                                {{ expense.vendor|default:"-" }}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- No Expenses Message -->
+    {% if not current_month_maintenance_invoices and not current_month_expense_records %}
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+        <div class="p-12 text-center">
+            <div class="text-gray-500 dark:text-gray-400">
+                <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">No Expenses</h3>
+                <p class="text-gray-500 dark:text-gray-400">No expenses found for {{ current_month_start|date:"F Y" }}{% if selected_property %} in {{ selected_property.name }}{% endif %}.</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

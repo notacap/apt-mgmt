@@ -12,7 +12,8 @@ from .views import (
     accept_invitation,
     get_available_units,
     custom_login,
-    rent_income_detail
+    rent_income_detail,
+    monthly_expenses_detail
 )
 
 app_name = "core"
@@ -30,6 +31,7 @@ urlpatterns = [
     path("dashboard/employee/", employee_dashboard, name="employee_dashboard"),
     path("dashboard/tenant/", tenant_dashboard, name="tenant_dashboard"),
     path("dashboard/rent-income/", rent_income_detail, name="rent_income_detail"),
+    path("dashboard/monthly-expenses/", monthly_expenses_detail, name="monthly_expenses_detail"),
     # API endpoints
     path("api/properties/<int:property_id>/available-units/", get_available_units, name="get_available_units"),
 ] 
