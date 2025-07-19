@@ -215,12 +215,12 @@
         </a>
 
         <!-- Occupancy Rate -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow duration-200">
+        <a href="{% url 'core:occupancy_rate_detail' %}{% if selected_property %}?property={{ selected_property.id }}{% endif %}" class="block bg-white dark:bg-gray-800 rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow duration-200">
             <div class="flex items-center">
                 <div class="flex-1">
                     <p class="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Occupancy Rate</p>
-                    <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">87%</p>
-                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">26 of 30 units occupied</p>
+                    <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">{{ occupancy_percentage }}%</p>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ occupied_units_count }} of {{ total_units_count }} unit{{ total_units_count|pluralize }} occupied</p>
                 </div>
                 <div class="flex-shrink-0">
                     <div class="w-10 h-10 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
@@ -231,9 +231,13 @@
                 </div>
             </div>
             <div class="mt-4 flex items-center">
-                <span class="text-sm text-gray-500 dark:text-gray-400">4 units vacant</span>
+                {% if vacant_units_count > 0 %}
+                    <span class="text-sm text-gray-500 dark:text-gray-400">{{ vacant_units_count }} unit{{ vacant_units_count|pluralize }} vacant</span>
+                {% else %}
+                    <span class="text-sm text-green-600 dark:text-green-400">All units occupied</span>
+                {% endif %}
             </div>
-        </div>
+        </a>
 
         <!-- Lease Expiration Alerts -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow duration-200">

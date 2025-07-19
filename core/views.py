@@ -185,6 +185,29 @@ def landlord_dashboard(request):
         status__in=['OVERDUE', 'PARTIAL']
     ).values('payment_schedule__tenant').distinct().count()
     
+    # Calculate occupancy rate metrics
+    all_units_query = ApartmentUnit.objects.filter(
+        property__company=request.user.company
+    )
+    
+    # Filter by property if landlord is assigned to specific property
+    if request.user.property:
+        all_units_query = all_units_query.filter(
+            property=request.user.property
+        )
+    
+    total_units_count = all_units_query.count()
+    
+    # Count units that have tenants assigned (more accurate than is_occupied flag)
+    occupied_units_count = all_units_query.filter(tenant__isnull=False).distinct().count()
+    vacant_units_count = total_units_count - occupied_units_count
+    
+    # Calculate occupancy percentage
+    if total_units_count > 0:
+        occupancy_percentage = round((occupied_units_count / total_units_count) * 100)
+    else:
+        occupancy_percentage = 0
+    
     # Get available properties for the property selector
     from properties.models import Property
     available_properties = Property.objects.filter(company=request.user.company)
@@ -264,6 +287,20 @@ def landlord_dashboard(request):
                 status__in=['OVERDUE', 'PARTIAL']
             ).values('payment_schedule__tenant').distinct().count()
             
+            # Recalculate occupancy rate for selected property
+            all_units_query = ApartmentUnit.objects.filter(
+                property=selected_property
+            )
+            total_units_count = all_units_query.count()
+            # Count units with tenants (more accurate than is_occupied flag)
+            occupied_units_count = all_units_query.filter(tenant__isnull=False).distinct().count()
+            vacant_units_count = total_units_count - occupied_units_count
+            
+            if total_units_count > 0:
+                occupancy_percentage = round((occupied_units_count / total_units_count) * 100)
+            else:
+                occupancy_percentage = 0
+            
         except Property.DoesNotExist:
             selected_property = None
     
@@ -300,6 +337,11 @@ def landlord_dashboard(request):
         'pending_payments': pending_payments,
         'partial_payments': partial_payments,
         'late_tenants': late_tenants,
+        # Occupancy rate data
+        'total_units_count': total_units_count,
+        'occupied_units_count': occupied_units_count,
+        'vacant_units_count': vacant_units_count,
+        'occupancy_percentage': occupancy_percentage,
         # Property selection data
         'available_properties': available_properties,
         'selected_property': selected_property,
@@ -1220,3 +1262,153 @@ def payment_status_detail(request):
     }
     
     return render(request, 'dashboards/payment_status_detail.html', context)
+
+@login_required
+def occupancy_rate_detail(request):
+    """Detailed view for occupancy rate metrics"""
+    if not request.user.company:
+        messages.error(request, "You must be assigned to a company to access this page.")
+        return redirect("core:login")
+    
+    # Only allow landlords and employees to access this view
+    if request.user.role not in [User.Role.LANDLORD, User.Role.EMPLOYEE]:
+        messages.error(request, "You do not have permission to access this page.")
+        return redirect("core:dashboard_redirect")
+    
+    # Get filter parameters from URL
+    property_id = request.GET.get('property')
+    status_filter = request.GET.get('status')  # 'occupied', 'vacant', or 'all'
+    search_query = request.GET.get('search')
+    
+    selected_property = None
+    if property_id:
+        try:
+            from properties.models import Property
+            selected_property = Property.objects.get(
+                id=property_id, 
+                company=request.user.company
+            )
+        except Property.DoesNotExist:
+            selected_property = None
+    
+    # Base query for apartment units
+    apartment_units_query = ApartmentUnit.objects.filter(
+        property__company=request.user.company
+    ).select_related(
+        'property'
+    ).prefetch_related(
+        'tenant'  # Get tenants associated with this unit (reverse FK relationship)
+    )
+    
+    # Apply property filter
+    if selected_property:
+        apartment_units_query = apartment_units_query.filter(property=selected_property)
+    elif request.user.property:
+        apartment_units_query = apartment_units_query.filter(property=request.user.property)
+    
+    # Apply status filter
+    if status_filter == 'occupied':
+        apartment_units_query = apartment_units_query.filter(tenant__isnull=False)
+    elif status_filter == 'vacant':
+        apartment_units_query = apartment_units_query.filter(tenant__isnull=True)
+    # 'all' or None shows all units
+    
+    # Apply search filter
+    if search_query:
+        apartment_units_query = apartment_units_query.filter(
+            Q(unit_number__icontains=search_query) |
+            Q(property__name__icontains=search_query) |
+            Q(tenant__first_name__icontains=search_query) |
+            Q(tenant__last_name__icontains=search_query) |
+            Q(tenant__username__icontains=search_query)
+        ).distinct()
+    
+    # Order by property name and unit number
+    apartment_units = apartment_units_query.order_by('property__name', 'unit_number')
+    
+    # Calculate occupancy statistics for the filtered scope
+    base_count_query = ApartmentUnit.objects.filter(
+        property__company=request.user.company
+    )
+    if selected_property:
+        base_count_query = base_count_query.filter(property=selected_property)
+    elif request.user.property:
+        base_count_query = base_count_query.filter(property=request.user.property)
+    
+    total_units = base_count_query.count()
+    occupied_units = base_count_query.filter(tenant__isnull=False).distinct().count()
+    vacant_units = base_count_query.filter(tenant__isnull=True).count()
+    
+    # Calculate occupancy percentage
+    if total_units > 0:
+        occupancy_percentage = round((occupied_units / total_units) * 100)
+    else:
+        occupancy_percentage = 0
+    
+    # Calculate potential monthly income
+    total_potential_income = base_count_query.aggregate(
+        total=Sum('rent_amount')
+    )['total'] or Decimal('0.00')
+    
+    occupied_income = base_count_query.filter(tenant__isnull=False).aggregate(
+        total=Sum('rent_amount')
+    )['total'] or Decimal('0.00')
+    
+    vacant_income_loss = total_potential_income - occupied_income
+    
+    # Get property breakdown for summary
+    property_breakdown = base_count_query.values('property__name', 'property__id').annotate(
+        total=Count('id'),
+        occupied=Count('id', filter=Q(tenant__isnull=False)),
+        vacant=Count('id', filter=Q(tenant__isnull=True)),
+        potential_income=Sum('rent_amount'),
+        occupied_income=Sum('rent_amount', filter=Q(tenant__isnull=False))
+    ).order_by('property__name')
+    
+    # Add occupancy percentage to each property
+    for prop in property_breakdown:
+        if prop['total'] > 0:
+            prop['occupancy_percentage'] = round((prop['occupied'] / prop['total']) * 100)
+        else:
+            prop['occupancy_percentage'] = 0
+        prop['vacant_income_loss'] = (prop['potential_income'] or Decimal('0.00')) - (prop['occupied_income'] or Decimal('0.00'))
+    
+    # Get available properties for filter dropdown
+    from properties.models import Property
+    available_properties = Property.objects.filter(company=request.user.company)
+    if request.user.property:
+        available_properties = available_properties.filter(id=request.user.property.id)
+    
+    # Get recent vacancies (units that became vacant in the last 30 days)
+    from django.utils import timezone
+    thirty_days_ago = timezone.now() - timedelta(days=30)
+    recent_vacancies = base_count_query.filter(
+        is_occupied=False,
+        updated_at__gte=thirty_days_ago
+    ).count()
+    
+    context = {
+        'apartment_units': apartment_units,
+        'selected_property': selected_property,
+        'available_properties': available_properties,
+        'status_filter': status_filter,
+        'search_query': search_query,
+        'total_units': total_units,
+        'occupied_units': occupied_units,
+        'vacant_units': vacant_units,
+        'occupancy_percentage': occupancy_percentage,
+        'total_potential_income': total_potential_income,
+        'occupied_income': occupied_income,
+        'vacant_income_loss': vacant_income_loss,
+        'property_breakdown': property_breakdown,
+        'recent_vacancies': recent_vacancies,
+        'filtered_count': apartment_units.count(),
+        # Status choices for dropdown
+        'status_choices': [
+            ('all', 'All Units'),
+            ('occupied', 'Occupied'),
+            ('vacant', 'Vacant'),
+        ],
+    }
+    
+    return render(request, 'dashboards/occupancy_rate_detail.html', context)
