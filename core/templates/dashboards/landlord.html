@@ -240,11 +240,11 @@
         </a>
 
         <!-- Lease Expiration Alerts -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow duration-200">
+        <a href="{% url 'core:lease_expirations_detail' %}{% if selected_property %}?property={{ selected_property.id }}{% endif %}" class="block bg-white dark:bg-gray-800 rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow duration-200">
             <div class="flex items-center">
                 <div class="flex-1">
                     <p class="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Lease Expirations</p>
-                    <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">5</p>
+                    <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">{{ leases_expiring_90_days }}</p>
                     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Next 90 days</p>
                 </div>
                 <div class="flex-shrink-0">
@@ -256,9 +256,13 @@
                 </div>
             </div>
             <div class="mt-4 flex items-center">
-                <span class="text-sm text-gray-500 dark:text-gray-400">2 in next 30 days</span>
+                {% if leases_expiring_30_days > 0 %}
+                    <span class="text-sm text-orange-600 dark:text-orange-400">{{ leases_expiring_30_days }} in next 30 days</span>
+                {% else %}
+                    <span class="text-sm text-gray-500 dark:text-gray-400">No urgent expirations</span>
+                {% endif %}
             </div>
-        </div>
+        </a>
 
         <!-- Vacant Units -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow duration-200">

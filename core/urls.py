@@ -16,7 +16,8 @@ from .views import (
     monthly_expenses_detail,
     maintenance_requests_detail,
     payment_status_detail,
-    occupancy_rate_detail
+    occupancy_rate_detail,
+    lease_expirations_detail
 )
 
 app_name = "core"
@@ -38,6 +39,7 @@ urlpatterns = [
     path("dashboard/maintenance-requests/", maintenance_requests_detail, name="maintenance_requests_detail"),
     path("dashboard/payment-status/", payment_status_detail, name="payment_status_detail"),
     path("dashboard/occupancy-rate/", occupancy_rate_detail, name="occupancy_rate_detail"),
+    path("dashboard/lease-expirations/", lease_expirations_detail, name="lease_expirations_detail"),
     # API endpoints
     path("api/properties/<int:property_id>/available-units/", get_available_units, name="get_available_units"),
 ] 
