@@ -144,7 +144,7 @@
         </div>
 
         <!-- Maintenance Requests -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow duration-200">
+        <a href="{% url 'core:maintenance_requests_detail' %}{% if selected_property %}?property={{ selected_property.id }}{% endif %}" class="block bg-white dark:bg-gray-800 rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow duration-200">
             <div class="flex items-center">
                 <div class="flex-1">
                     <p class="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Maintenance Requests</p>
@@ -175,7 +175,7 @@
                 <span class="ml-1 text-sm text-green-600 dark:text-green-400">{{ completed_this_month }} completed this month</span>
             </div>
             {% endif %}
-        </div>
+        </a>
 
         <!-- Payment Status -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow duration-200">

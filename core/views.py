@@ -73,11 +73,12 @@ def landlord_dashboard(request):
             property=request.user.property
         )
     
-    # Maintenance statistics
-    total_maintenance_requests = company_maintenance_requests.count()
+    # Maintenance statistics (exclude completed requests from total)
+    active_maintenance_requests = company_maintenance_requests.exclude(status='COMPLETED')
+    total_maintenance_requests = active_maintenance_requests.count()
     pending_requests = company_maintenance_requests.filter(status='SUBMITTED').count()
     in_progress_requests = company_maintenance_requests.filter(status='IN_PROGRESS').count()
-    emergency_requests = company_maintenance_requests.filter(priority='EMERGENCY').count()
+    emergency_requests = active_maintenance_requests.filter(priority='EMERGENCY').count()
     completed_this_month = company_maintenance_requests.filter(
         status='COMPLETED',
         completed_at__gte=timezone.now().replace(day=1)
@@ -196,10 +197,11 @@ def landlord_dashboard(request):
             company_maintenance_requests = MaintenanceRequest.objects.filter(
                 property=selected_property
             )
-            total_maintenance_requests = company_maintenance_requests.count()
+            active_maintenance_requests = company_maintenance_requests.exclude(status='COMPLETED')
+            total_maintenance_requests = active_maintenance_requests.count()
             pending_requests = company_maintenance_requests.filter(status='SUBMITTED').count()
             in_progress_requests = company_maintenance_requests.filter(status='IN_PROGRESS').count()
-            emergency_requests = company_maintenance_requests.filter(priority='EMERGENCY').count()
+            emergency_requests = active_maintenance_requests.filter(priority='EMERGENCY').count()
             completed_this_month = company_maintenance_requests.filter(
                 status='COMPLETED',
                 completed_at__gte=timezone.now().replace(day=1)
@@ -878,3 +880,135 @@ def monthly_expenses_detail(request):
     }
     
     return render(request, 'dashboards/monthly_expenses_detail.html', context)
+
+@login_required
+def maintenance_requests_detail(request):
+    """Detailed view for maintenance requests metrics"""
+    if not request.user.company:
+        messages.error(request, "You must be assigned to a company to access this page.")
+        return redirect("core:login")
+    
+    # Only allow landlords and employees to access this view
+    if request.user.role not in [User.Role.LANDLORD, User.Role.EMPLOYEE]:
+        messages.error(request, "You do not have permission to access this page.")
+        return redirect("core:dashboard_redirect")
+    
+    # Get filter parameters from URL
+    property_id = request.GET.get('property')
+    status_filter = request.GET.get('status')
+    priority_filter = request.GET.get('priority')
+    search_query = request.GET.get('search')
+    
+    selected_property = None
+    if property_id:
+        try:
+            from properties.models import Property
+            selected_property = Property.objects.get(
+                id=property_id, 
+                company=request.user.company
+            )
+        except Property.DoesNotExist:
+            selected_property = None
+    
+    # Base query for maintenance requests
+    maintenance_requests_query = MaintenanceRequest.objects.filter(
+        property__company=request.user.company
+    ).select_related(
+        'property',
+        'apartment_unit',
+        'tenant',
+        'assigned_to',
+        'category'
+    ).prefetch_related('photos', 'invoices', 'updates')
+    
+    # Apply property filter
+    if selected_property:
+        maintenance_requests_query = maintenance_requests_query.filter(property=selected_property)
+    elif request.user.property:
+        maintenance_requests_query = maintenance_requests_query.filter(property=request.user.property)
+    
+    # Apply status filter
+    if status_filter and status_filter != 'all':
+        maintenance_requests_query = maintenance_requests_query.filter(status=status_filter)
+    
+    # Apply priority filter
+    if priority_filter and priority_filter != 'all':
+        maintenance_requests_query = maintenance_requests_query.filter(priority=priority_filter)
+    
+    # Apply search filter
+    if search_query:
+        maintenance_requests_query = maintenance_requests_query.filter(
+            Q(title__icontains=search_query) |
+            Q(description__icontains=search_query) |
+            Q(tenant__first_name__icontains=search_query) |
+            Q(tenant__last_name__icontains=search_query) |
+            Q(tenant__username__icontains=search_query) |
+            Q(apartment_unit__unit_number__icontains=search_query)
+        )
+    
+    # Order by creation date (newest first)
+    maintenance_requests = maintenance_requests_query.order_by('-created_at')
+    
+    # Calculate status counts for the filtered property
+    base_count_query = MaintenanceRequest.objects.filter(
+        property__company=request.user.company
+    )
+    if selected_property:
+        base_count_query = base_count_query.filter(property=selected_property)
+    elif request.user.property:
+        base_count_query = base_count_query.filter(property=request.user.property)
+    
+    status_counts = {
+        'total': base_count_query.count(),
+        'submitted': base_count_query.filter(status='SUBMITTED').count(),
+        'in_progress': base_count_query.filter(status='IN_PROGRESS').count(),
+        'scheduled': base_count_query.filter(status='SCHEDULED').count(),
+        'completed': base_count_query.filter(status='COMPLETED').count(),
+        'cancelled': base_count_query.filter(status='CANCELLED').count(),
+    }
+    
+    # Calculate priority counts
+    priority_counts = {
+        'emergency': base_count_query.filter(priority='EMERGENCY').count(),
+        'high': base_count_query.filter(priority='HIGH').count(),
+        'medium': base_count_query.filter(priority='MEDIUM').count(),
+        'low': base_count_query.filter(priority='LOW').count(),
+    }
+    
+    # Recent activity (this month)
+    current_month_start = timezone.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    current_month_requests = base_count_query.filter(created_at__gte=current_month_start).count()
+    completed_this_month = base_count_query.filter(
+        status='COMPLETED',
+        completed_at__gte=current_month_start
+    ).count()
+    
+    # Get available properties for filter dropdown
+    from properties.models import Property
+    available_properties = Property.objects.filter(company=request.user.company)
+    if request.user.property:
+        available_properties = available_properties.filter(id=request.user.property.id)
+    
+    # Get maintenance categories for potential future filtering
+    from maintenance.models import MaintenanceCategory
+    categories = MaintenanceCategory.objects.all().order_by('name')
+    
+    context = {
+        'maintenance_requests': maintenance_requests,
+        'selected_property': selected_property,
+        'available_properties': available_properties,
+        'status_filter': status_filter,
+        'priority_filter': priority_filter,
+        'search_query': search_query,
+        'status_counts': status_counts,
+        'priority_counts': priority_counts,
+        'current_month_requests': current_month_requests,
+        'completed_this_month': completed_this_month,
+        'categories': categories,
+        'filtered_count': maintenance_requests.count(),
+        # Status choices for dropdowns
+        'status_choices': MaintenanceRequest.Status.choices,
+        'priority_choices': MaintenanceRequest.Priority.choices,
+    }
+    
+    return render(request, 'dashboards/maintenance_requests_detail.html', context)
