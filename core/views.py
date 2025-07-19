@@ -755,10 +755,13 @@ def tenant_dashboard(request):
     for thread in recent_message_threads:
         total_message_count += 1
         # Calculate unread messages for this tenant
+        # Check if there are messages in this thread that:
+        # 1. Were not sent by the current user
+        # 2. Have not been read by the current user (no MessageReadStatus record)
         unread_for_user = thread.messages.exclude(
-            read_by=request.user
-        ).exclude(
             sender=request.user
+        ).exclude(
+            messagereadstatus__user=request.user
         ).count()
         if unread_for_user > 0:
             unread_message_count += 1
