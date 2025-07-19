@@ -14,7 +14,7 @@ from properties.models import ApartmentUnit
 from financials.models import PaymentSchedule, RentPayment, ExpenseRecord
 from datetime import timedelta, date
 from django.utils import timezone
-from django.db.models import Sum, Q
+from django.db.models import Sum, Q, Avg
 from decimal import Decimal
 from django.http import JsonResponse
 from django.core.mail import send_mail
@@ -234,6 +234,30 @@ def landlord_dashboard(request):
         end_date__lte=today + timedelta(days=90)
     ).count()
     
+    # Calculate average vacancy duration for vacant units
+    vacant_units_for_avg = ApartmentUnit.objects.filter(
+        property__company=request.user.company,
+        tenant__isnull=True
+    )
+    
+    # Filter by property if landlord is assigned to specific property
+    if request.user.property:
+        vacant_units_for_avg = vacant_units_for_avg.filter(
+            property=request.user.property
+        )
+    
+    # Calculate average vacancy days (estimate based on last updated)
+    avg_vacancy_days = 0
+    if vacant_units_count > 0:
+        vacancy_durations = []
+        for unit in vacant_units_for_avg:
+            if unit.updated_at:
+                days_vacant = (timezone.now() - unit.updated_at).days
+                vacancy_durations.append(days_vacant)
+        
+        if vacancy_durations:
+            avg_vacancy_days = sum(vacancy_durations) // len(vacancy_durations)
+    
     # Get available properties for the property selector
     from properties.models import Property
     available_properties = Property.objects.filter(company=request.user.company)
@@ -344,6 +368,23 @@ def landlord_dashboard(request):
                 end_date__lte=today + timedelta(days=90)
             ).count()
             
+            # Recalculate average vacancy for selected property
+            vacant_units_for_avg = ApartmentUnit.objects.filter(
+                property=selected_property,
+                tenant__isnull=True
+            )
+            
+            avg_vacancy_days = 0
+            if vacant_units_count > 0:
+                vacancy_durations = []
+                for unit in vacant_units_for_avg:
+                    if unit.updated_at:
+                        days_vacant = (timezone.now() - unit.updated_at).days
+                        vacancy_durations.append(days_vacant)
+                
+                if vacancy_durations:
+                    avg_vacancy_days = sum(vacancy_durations) // len(vacancy_durations)
+            
         except Property.DoesNotExist:
             selected_property = None
     
@@ -388,6 +429,8 @@ def landlord_dashboard(request):
         # Lease expiration data
         'leases_expiring_30_days': leases_expiring_30_days,
         'leases_expiring_90_days': leases_expiring_90_days,
+        # Vacant units data
+        'avg_vacancy_days': avg_vacancy_days,
         # Property selection data
         'available_properties': available_properties,
         'selected_property': selected_property,
@@ -1691,3 +1734,228 @@ def lease_expirations_detail(request):
     }
     
     return render(request, 'dashboards/lease_expirations_detail.html', context)
+
+@login_required
+def vacant_units_detail(request):
+    """Detailed view for vacant units metrics"""
+    if not request.user.company:
+        messages.error(request, "You must be assigned to a company to access this page.")
+        return redirect("core:login")
+    
+    # Only allow landlords and employees to access this view
+    if request.user.role not in [User.Role.LANDLORD, User.Role.EMPLOYEE]:
+        messages.error(request, "You do not have permission to access this page.")
+        return redirect("core:dashboard_redirect")
+    
+    # Get filter parameters from URL
+    property_id = request.GET.get('property')
+    bedroom_filter = request.GET.get('bedrooms')  # Filter by number of bedrooms
+    price_range = request.GET.get('price_range')  # 'low', 'medium', 'high'
+    search_query = request.GET.get('search')
+    
+    selected_property = None
+    if property_id:
+        try:
+            from properties.models import Property
+            selected_property = Property.objects.get(
+                id=property_id, 
+                company=request.user.company
+            )
+        except Property.DoesNotExist:
+            selected_property = None
+    
+    # Base query for vacant apartment units
+    vacant_units_query = ApartmentUnit.objects.filter(
+        property__company=request.user.company,
+        tenant__isnull=True  # No tenants assigned = vacant
+    ).select_related(
+        'property'
+    ).order_by('property__name', 'unit_number')
+    
+    # Apply property filter
+    if selected_property:
+        vacant_units_query = vacant_units_query.filter(property=selected_property)
+    elif request.user.property:
+        vacant_units_query = vacant_units_query.filter(property=request.user.property)
+    
+    # Apply bedroom filter
+    if bedroom_filter and bedroom_filter.isdigit():
+        vacant_units_query = vacant_units_query.filter(bedrooms=int(bedroom_filter))
+    
+    # Apply price range filter
+    if price_range:
+        # Calculate price ranges based on all units
+        all_rent_amounts = ApartmentUnit.objects.filter(
+            property__company=request.user.company
+        ).values_list('rent_amount', flat=True)
+        
+        if all_rent_amounts:
+            rent_amounts = [amount for amount in all_rent_amounts if amount > 0]
+            if rent_amounts:
+                rent_amounts.sort()
+                low_threshold = rent_amounts[len(rent_amounts)//3]
+                high_threshold = rent_amounts[2*len(rent_amounts)//3]
+                
+                if price_range == 'low':
+                    vacant_units_query = vacant_units_query.filter(rent_amount__lte=low_threshold)
+                elif price_range == 'medium':
+                    vacant_units_query = vacant_units_query.filter(
+                        rent_amount__gt=low_threshold,
+                        rent_amount__lte=high_threshold
+                    )
+                elif price_range == 'high':
+                    vacant_units_query = vacant_units_query.filter(rent_amount__gt=high_threshold)
+    
+    # Apply search filter
+    if search_query:
+        vacant_units_query = vacant_units_query.filter(
+            Q(unit_number__icontains=search_query) |
+            Q(property__name__icontains=search_query)
+        )
+    
+    # Get all vacant units
+    vacant_units = vacant_units_query
+    
+    # Calculate vacancy statistics
+    base_count_query = ApartmentUnit.objects.filter(
+        property__company=request.user.company
+    )
+    if selected_property:
+        base_count_query = base_count_query.filter(property=selected_property)
+    elif request.user.property:
+        base_count_query = base_count_query.filter(property=request.user.property)
+    
+    total_units = base_count_query.count()
+    vacant_units_count = base_count_query.filter(tenant__isnull=True).count()
+    occupied_units_count = base_count_query.filter(tenant__isnull=False).distinct().count()
+    
+    # Calculate vacancy percentage
+    if total_units > 0:
+        vacancy_percentage = round((vacant_units_count / total_units) * 100)
+    else:
+        vacancy_percentage = 0
+    
+    # Calculate potential income loss from vacant units
+    total_potential_income = base_count_query.aggregate(
+        total=Sum('rent_amount')
+    )['total'] or Decimal('0.00')
+    
+    vacant_income_potential = base_count_query.filter(tenant__isnull=True).aggregate(
+        total=Sum('rent_amount')
+    )['total'] or Decimal('0.00')
+    
+    # Calculate recent vacancy changes (last 30 days)
+    thirty_days_ago = timezone.now() - timedelta(days=30)
+    recently_vacated = base_count_query.filter(
+        tenant__isnull=True,
+        updated_at__gte=thirty_days_ago
+    ).count()
+    
+    # Bedroom breakdown for vacant units
+    bedroom_breakdown = vacant_units_query.values('bedrooms').annotate(
+        count=Count('id'),
+        avg_rent=Avg('rent_amount'),
+        total_potential=Sum('rent_amount')
+    ).order_by('bedrooms')
+    
+    # Property breakdown (if showing all properties)
+    property_breakdown = None
+    if not selected_property:
+        property_breakdown = base_count_query.values(
+            'property__name', 
+            'property__id'
+        ).annotate(
+            total_units=Count('id'),
+            vacant_units=Count('id', filter=Q(tenant__isnull=True)),
+            occupied_units=Count('id', filter=Q(tenant__isnull=False)),
+            vacant_income_loss=Sum('rent_amount', filter=Q(tenant__isnull=True))
+        ).order_by('property__name')
+        
+        # Add vacancy percentage to each property
+        for prop in property_breakdown:
+            if prop['total_units'] > 0:
+                prop['vacancy_percentage'] = round((prop['vacant_units'] / prop['total_units']) * 100)
+            else:
+                prop['vacancy_percentage'] = 0
+    
+    # Get available properties for filter dropdown
+    from properties.models import Property
+    available_properties = Property.objects.filter(company=request.user.company)
+    if request.user.property:
+        available_properties = available_properties.filter(id=request.user.property.id)
+    
+    # Get unique bedroom counts for filter dropdown
+    bedroom_options = ApartmentUnit.objects.filter(
+        property__company=request.user.company
+    ).values_list('bedrooms', flat=True).distinct().order_by('bedrooms')
+    
+    # Calculate average vacancy duration (this is an estimate based on last updated)
+    # In a real system, you might track when units became vacant
+    avg_vacancy_days = 0
+    if vacant_units_count > 0:
+        # Estimate based on how long ago units were last updated (rough approximation)
+        vacancy_durations = []
+        for unit in vacant_units_query:
+            if unit.updated_at:
+                days_vacant = (timezone.now() - unit.updated_at).days
+                vacancy_durations.append(days_vacant)
+        
+        if vacancy_durations:
+            avg_vacancy_days = sum(vacancy_durations) // len(vacancy_durations)
+    
+    # Add unit details with estimated vacancy duration
+    annotated_units = []
+    for unit in vacant_units:
+        days_vacant = (timezone.now() - unit.updated_at).days if unit.updated_at else 0
+        
+        # Categorize vacancy duration
+        if days_vacant <= 7:
+            vacancy_status = 'new'
+            urgency = 'low'
+        elif days_vacant <= 30:
+            vacancy_status = 'recent'
+            urgency = 'medium'
+        elif days_vacant <= 90:
+            vacancy_status = 'extended'
+            urgency = 'high'
+        else:
+            vacancy_status = 'long_term'
+            urgency = 'critical'
+        
+        annotated_units.append({
+            'unit': unit,
+            'days_vacant': days_vacant,
+            'vacancy_status': vacancy_status,
+            'urgency': urgency
+        })
+    
+    context = {
+        'annotated_units': annotated_units,
+        'selected_property': selected_property,
+        'available_properties': available_properties,
+        'bedroom_filter': bedroom_filter,
+        'price_range': price_range,
+        'search_query': search_query,
+        'total_units': total_units,
+        'vacant_units_count': vacant_units_count,
+        'occupied_units_count': occupied_units_count,
+        'vacancy_percentage': vacancy_percentage,
+        'total_potential_income': total_potential_income,
+        'vacant_income_potential': vacant_income_potential,
+        'recently_vacated': recently_vacated,
+        'avg_vacancy_days': avg_vacancy_days,
+        'bedroom_breakdown': bedroom_breakdown,
+        'property_breakdown': property_breakdown,
+        'bedroom_options': bedroom_options,
+        'filtered_count': len(annotated_units),
+        # Filter choices
+        'bedroom_choices': [(str(br), f"{br} Bedroom{'s' if br != 1 else ''}") for br in bedroom_options],
+        'price_range_choices': [
+            ('all', 'All Price Ranges'),
+            ('low', 'Low Price Range'),
+            ('medium', 'Medium Price Range'),
+            ('high', 'High Price Range'),
+        ],
+    }
+    
+    return render(request, 'dashboards/vacant_units_detail.html', context)

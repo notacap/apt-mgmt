@@ -265,12 +265,12 @@
         </a>
 
         <!-- Vacant Units -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow duration-200">
+        <a href="{% url 'core:vacant_units_detail' %}{% if selected_property %}?property={{ selected_property.id }}{% endif %}" class="block bg-white dark:bg-gray-800 rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow duration-200">
             <div class="flex items-center">
                 <div class="flex-1">
                     <p class="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Vacant Units</p>
-                    <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">4</p>
-                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Units available for rent</p>
+                    <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">{{ vacant_units_count }}</p>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Unit{{ vacant_units_count|pluralize }} available for rent</p>
                 </div>
                 <div class="flex-shrink-0">
                     <div class="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
@@ -282,9 +282,13 @@
                 </div>
             </div>
             <div class="mt-4 flex items-center">
-                <span class="text-sm text-gray-500 dark:text-gray-400">Average vacancy: 12 days</span>
+                {% if avg_vacancy_days > 0 %}
+                    <span class="text-sm text-gray-500 dark:text-gray-400">Average vacancy: {{ avg_vacancy_days }} day{{ avg_vacancy_days|pluralize }}</span>
+                {% else %}
+                    <span class="text-sm text-gray-500 dark:text-gray-400">All units occupied</span>
+                {% endif %}
             </div>
-        </div>
+        </a>
     </div>
 
     <!-- Document Management Section -->

@@ -1,0 +1,338 @@
+{% extends "base.html" %}
+
+{% block title %}Vacant Units - Detailed View{% endblock %}
+
+{% block content %}
+<div class="container mx-auto max-w-7xl">
+    <!-- Header with Navigation -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 space-y-4 sm:space-y-0">
+        <div>
+            <div class="flex items-center space-x-3 mb-2">
+                <a href="{% url 'core:landlord_dashboard' %}{% if selected_property %}?property={{ selected_property.id }}{% endif %}" class="text-blue-600 dark:text-blue-400 hover:underline">
+                    <svg class="w-5 h-5 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
+                    Back to Dashboard
+                </a>
+            </div>
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Vacant Units</h1>
+            <p class="text-gray-600 dark:text-gray-400 mt-1">
+                Available units and vacancy management
+                {% if selected_property %} - {{ selected_property.name }}{% endif %}
+            </p>
+        </div>
+        
+        <!-- Property Filter -->
+        <div class="flex items-center space-x-4">
+            <div class="relative" x-data="{ open: false }">
+                <button @click="open = !open" class="flex items-center space-x-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <span>{{ selected_property.name|default:"All Properties" }}</span>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </button>
+                <div x-show="open" @click.away="open = false" x-transition class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-50 border border-gray-200 dark:border-gray-700">
+                    <a href="{% url 'core:vacant_units_detail' %}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 {% if not selected_property %}bg-blue-50 dark:bg-blue-900/20{% endif %}">All Properties</a>
+                    {% for property in available_properties %}
+                        <a href="{% url 'core:vacant_units_detail' %}?property={{ property.id }}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 {% if selected_property.id == property.id %}bg-blue-50 dark:bg-blue-900/20{% endif %}">{{ property.name }}</a>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <!-- Total Vacant Units -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-1">
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Vacant Units</p>
+                    <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">{{ vacant_units_count }}</p>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Available for rent</p>
+                </div>
+                <div class="flex-shrink-0">
+                    <div class="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vacancy Percentage -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-1">
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Vacancy Rate</p>
+                    <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">{{ vacancy_percentage }}%</p>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        {% if vacancy_percentage <= 5 %}
+                            <span class="text-green-600 dark:text-green-400">Excellent</span>
+                        {% elif vacancy_percentage <= 10 %}
+                            <span class="text-yellow-600 dark:text-yellow-400">Good</span>
+                        {% else %}
+                            <span class="text-red-600 dark:text-red-400">High</span>
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="flex-shrink-0">
+                    <div class="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Income Loss -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-1">
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Monthly Income Loss</p>
+                    <p class="mt-2 text-3xl font-bold text-red-600 dark:text-red-400">${{ vacant_income_potential|floatformat:2 }}</p>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">From vacant units</p>
+                </div>
+                <div class="flex-shrink-0">
+                    <div class="w-10 h-10 bg-red-100 dark:bg-red-900 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Average Vacancy Duration -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-1">
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Avg Vacancy Duration</p>
+                    <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">{{ avg_vacancy_days }}</p>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Day{{ avg_vacancy_days|pluralize }}</p>
+                </div>
+                <div class="flex-shrink-0">
+                    <div class="w-10 h-10 bg-orange-100 dark:bg-orange-900 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bedroom Breakdown -->
+    {% if bedroom_breakdown %}
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow mb-8">
+        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Vacancy by Unit Type</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Vacant units breakdown by bedroom count</p>
+        </div>
+        <div class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {% for br in bedroom_breakdown %}
+                <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                    <div class="text-center">
+                        <h4 class="font-medium text-gray-900 dark:text-white">{{ br.bedrooms }} Bedroom{{ br.bedrooms|pluralize }}</h4>
+                        <div class="mt-2">
+                            <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ br.count }}</p>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">vacant unit{{ br.count|pluralize }}</p>
+                        </div>
+                        <div class="mt-3 text-sm text-gray-600 dark:text-gray-400">
+                            <p>Avg rent: ${{ br.avg_rent|floatformat:2 }}</p>
+                            <p class="text-red-600 dark:text-red-400">Loss: ${{ br.total_potential|floatformat:2 }}/mo</p>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Property Breakdown (if showing all properties) -->
+    {% if not selected_property and property_breakdown %}
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow mb-8">
+        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Property Breakdown</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Vacancy rates by property</p>
+        </div>
+        <div class="p-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+                {% for prop in property_breakdown %}
+                <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="font-medium text-gray-900 dark:text-white">{{ prop.property__name }}</h4>
+                        <span class="text-sm px-2 py-1 rounded-full
+                            {% if prop.vacancy_percentage <= 5 %}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
+                            {% elif prop.vacancy_percentage <= 10 %}bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200
+                            {% else %}bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200{% endif %}">
+                            {{ prop.vacancy_percentage }}% vacant
+                        </span>
+                    </div>
+                    <div class="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                        <div class="flex justify-between">
+                            <span>Total units:</span>
+                            <span>{{ prop.total_units }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Vacant:</span>
+                            <span>{{ prop.vacant_units }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Occupied:</span>
+                            <span>{{ prop.occupied_units }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Income loss:</span>
+                            <span class="text-red-600 dark:text-red-400">${{ prop.vacant_income_loss|floatformat:2 }}</span>
+                        </div>
+                    </div>
+                    <a href="{% url 'core:vacant_units_detail' %}?property={{ prop.property__id }}" 
+                       class="mt-3 block text-center bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 py-2 px-3 rounded text-sm hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors">
+                        View Details
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Filter and Search Controls -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow mb-6">
+        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Vacant Units List</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">{{ filtered_count }} vacant unit{{ filtered_count|pluralize }} found</p>
+        </div>
+        <div class="p-6">
+            <form method="get" class="flex flex-col lg:flex-row gap-4">
+                {% if selected_property %}
+                    <input type="hidden" name="property" value="{{ selected_property.id }}">
+                {% endif %}
+                
+                <!-- Search -->
+                <div class="flex-1">
+                    <input type="text" name="search" value="{{ search_query|default:'' }}" 
+                           placeholder="Search by unit number or property name..."
+                           class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                
+                <!-- Bedroom Filter -->
+                {% if bedroom_options %}
+                <div class="sm:w-48">
+                    <select name="bedrooms" 
+                            class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">All Bedrooms</option>
+                        {% for value, label in bedroom_choices %}
+                            <option value="{{ value }}" {% if bedroom_filter == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+                
+                <!-- Price Range Filter -->
+                <div class="sm:w-48">
+                    <select name="price_range" 
+                            class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        {% for value, label in price_range_choices %}
+                            <option value="{{ value }}" {% if price_range == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <!-- Filter Button -->
+                <button type="submit" 
+                        class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium">
+                    Filter
+                </button>
+                
+                <!-- Clear Filters -->
+                {% if search_query or bedroom_filter or price_range != 'all' %}
+                <a href="{% url 'core:vacant_units_detail' %}{% if selected_property %}?property={{ selected_property.id }}{% endif %}" 
+                   class="px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 font-medium">
+                    Clear
+                </a>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+
+    <!-- Vacant Units Table -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead class="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Unit</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Property</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Bedrooms/Bathrooms</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Rent Amount</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Vacancy Duration</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {% for item in annotated_units %}
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900 dark:text-white">Unit {{ item.unit.unit_number }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900 dark:text-white">{{ item.unit.property.name }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900 dark:text-white">{{ item.unit.bedrooms }}BR / {{ item.unit.bathrooms }}BA</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900 dark:text-white">${{ item.unit.rent_amount|floatformat:2 }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900 dark:text-white">{{ item.days_vacant }} day{{ item.days_vacant|pluralize }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% if item.vacancy_status == 'new' %}
+                                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                    New Vacancy
+                                </span>
+                            {% elif item.vacancy_status == 'recent' %}
+                                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                                    Recent
+                                </span>
+                            {% elif item.vacancy_status == 'extended' %}
+                                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
+                                    Extended
+                                </span>
+                            {% else %}
+                                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                                    Long Term
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <a href="{% url 'core:send_invitation' %}" class="text-blue-600 dark:text-blue-400 hover:underline">Add Tenant</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="px-6 py-12 text-center">
+                            <div class="text-gray-500 dark:text-gray-400">
+                                <svg class="mx-auto h-12 w-12 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <p class="text-lg font-medium">All units are occupied!</p>
+                                <p class="text-sm">Great job on maintaining high occupancy rates.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
