@@ -264,4 +264,56 @@ The financial system is fully functional with comprehensive payment management, 
 - Lease agreement integration with payment schedules
 - Expense reporting and budgeting tools
 
-We are now ready to begin **Phase 9: Detailed Views** or continue with additional financial features as needed. 
+## Calendar System Enhancements (Post-Phase 8)
+
+**Automatic Maintenance Calendar Integration** has been completed with significant improvements to the calendar system:
+
+**Automatic Calendar Event Creation:**
+- **Maintenance Request Scheduling**: When a maintenance request status is changed to "SCHEDULED" with a scheduled_date, a calendar event is automatically created
+- **Smart Event Details**: Calendar events include comprehensive information (title with "Maintenance:" prefix, property/unit details, description, location)
+- **Intelligent Duration**: Uses estimated_completion time or defaults to 2-hour duration for maintenance appointments
+- **Priority Mapping**: Emergency maintenance requests create HIGH priority calendar events, others default to MEDIUM priority
+- **Duplicate Prevention**: System checks for existing calendar events before creating new ones to prevent duplicates
+
+**Enhanced Calendar Visibility & Security:**
+- **Tenant Isolation**: Tenants can only see calendar events for their own maintenance requests, not other tenants' requests
+- **Property-Level Employee Access**: Employees now have proper property-level restrictions - they only see events for properties they're assigned to
+- **Landlord Full Access**: Landlords maintain company-wide visibility of all calendar events
+- **Role-Based Event Filtering**: Updated visibility logic ensures proper data isolation across all user roles
+
+**Calendar Event Assignment:**
+- **Automatic Tenant Assignment**: Requesting tenants are automatically assigned to their maintenance calendar events
+- **Worker Assignment**: If a maintenance worker is assigned to the request, they're also assigned to the calendar event
+- **Visibility Through Assignment**: Tenants can see maintenance events through direct assignment in addition to ownership-based visibility
+
+**User Model Enhancements:**
+- **Apartment Unit Field**: Added `apartment_unit` field to User model to properly associate tenants with their specific units
+- **Invitation System Update**: Fixed invitation acceptance process to properly transfer apartment_unit from invitation to user profile
+- **Admin Interface Update**: Enhanced Django admin to include apartment_unit field for easy tenant management
+
+**Maintenance Request Form Improvements:**
+- **Read-Only Unit Display**: Tenant maintenance request form now shows apartment unit as read-only field, maintaining visual balance
+- **Automatic Unit Assignment**: Tenant's apartment unit is automatically set during maintenance request creation
+- **Error Handling**: Clear messaging for tenants without assigned apartment units
+
+**Calendar Navigation Fixes:**
+- **Month View Navigation**: Fixed navigation arrows to properly change months using URL parameters
+- **Date Initialization**: Resolved timezone issues causing calendar to display wrong month on page load
+- **JavaScript Date Handling**: Improved date parsing to avoid timezone conversion problems in month view
+- **Multi-Day Event Display**: Fixed maintenance events incorrectly appearing as multi-day when they're same-day events
+
+**Technical Implementation:**
+- **Django Model Updates**: Added apartment_unit foreign key to User model with proper migration
+- **View Logic Enhancement**: Updated calendar visibility filters with role-specific access control
+- **Template Improvements**: Fixed JavaScript date initialization and navigation in month view
+- **Form Logic Updates**: Modified maintenance request forms to handle apartment unit automatically for tenants
+
+**Security & Access Control:**
+- **Strict Tenant Isolation**: Tenants cannot see other tenants' maintenance appointments in calendar
+- **Property-Level Employee Restrictions**: Employees from Property A cannot see maintenance from Property B
+- **Maintenance Event Filtering**: Separate visibility rules for maintenance vs non-maintenance calendar events
+- **Proper Data Boundaries**: All calendar access respects company and property boundaries
+
+This enhancement provides seamless integration between the maintenance system and calendar, ensuring all stakeholders are automatically informed when maintenance is scheduled while maintaining strict security boundaries between different user groups.
+
+We are now ready to begin **Phase 9: Detailed Views** or continue with additional features as needed. 
