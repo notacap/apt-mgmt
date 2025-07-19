@@ -15,15 +15,16 @@
         <div class="flex items-center space-x-4">
             <div class="relative" x-data="{ open: false }">
                 <button @click="open = !open" class="flex items-center space-x-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <span>All Properties</span>
+                    <span>{{ selected_property.name|default:"All Properties" }}</span>
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                     </svg>
                 </button>
                 <div x-show="open" @click.away="open = false" x-transition class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-50 border border-gray-200 dark:border-gray-700">
-                    <a href="#" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">All Properties</a>
-                    <a href="#" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Sunset Apartments</a>
-                    <a href="#" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Oak Manor</a>
+                    <a href="{% url 'core:landlord_dashboard' %}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 {% if not selected_property %}bg-blue-50 dark:bg-blue-900/20{% endif %}">All Properties</a>
+                    {% for property in available_properties %}
+                        <a href="{% url 'core:landlord_dashboard' %}?property={{ property.id }}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 {% if selected_property.id == property.id %}bg-blue-50 dark:bg-blue-900/20{% endif %}">{{ property.name }}</a>
+                    {% endfor %}
                 </div>
             </div>
             
@@ -60,11 +61,11 @@
     <!-- Metrics Cards Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <!-- Monthly Rent Income -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow duration-200">
+        <a href="{% url 'core:rent_income_detail' %}{% if selected_property %}?property={{ selected_property.id }}{% endif %}" class="block bg-white dark:bg-gray-800 rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow duration-200">
             <div class="flex items-center">
                 <div class="flex-1">
                     <p class="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Monthly Rent Income</p>
-                    <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">$24,850</p>
+                    <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">${{ current_month_income|floatformat:2 }}</p>
                     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Total collected this month</p>
                 </div>
                 <div class="flex-shrink-0">
@@ -76,19 +77,26 @@
                 </div>
             </div>
             <div class="mt-4 flex items-center">
-                <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
-                </svg>
-                <span class="ml-1 text-sm text-green-600 dark:text-green-400">+8.2% from last month</span>
+                {% if income_change_percent >= 0 %}
+                    <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                    </svg>
+                    <span class="ml-1 text-sm text-green-600 dark:text-green-400">+{{ income_change_percent|floatformat:1 }}% from last month</span>
+                {% else %}
+                    <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"></path>
+                    </svg>
+                    <span class="ml-1 text-sm text-red-600 dark:text-red-400">{{ income_change_percent|floatformat:1 }}% from last month</span>
+                {% endif %}
             </div>
-        </div>
+        </a>
 
         <!-- Monthly Expenses -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow duration-200">
             <div class="flex items-center">
                 <div class="flex-1">
                     <p class="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Monthly Expenses</p>
-                    <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">$8,450</p>
+                    <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">${{ current_month_expenses|floatformat:2 }}</p>
                     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Total expenses this month</p>
                 </div>
                 <div class="flex-shrink-0">
@@ -100,10 +108,7 @@
                 </div>
             </div>
             <div class="mt-4 flex items-center">
-                <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"></path>
-                </svg>
-                <span class="ml-1 text-sm text-red-600 dark:text-red-400">+12.5% from last month</span>
+                <span class="text-sm text-gray-500 dark:text-gray-400">{% if current_month_expenses > 0 %}{{ current_month_expenses|floatformat:0 }} expense records{% else %}No expenses recorded{% endif %}</span>
             </div>
         </div>
 
@@ -112,7 +117,7 @@
             <div class="flex items-center">
                 <div class="flex-1">
                     <p class="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Monthly Revenue</p>
-                    <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">$16,400</p>
+                    <p class="mt-2 text-3xl font-bold {% if current_month_revenue >= 0 %}text-gray-900 dark:text-white{% else %}text-red-600 dark:text-red-400{% endif %}">${{ current_month_revenue|floatformat:2 }}</p>
                     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Income minus expenses</p>
                 </div>
                 <div class="flex-shrink-0">
@@ -124,10 +129,17 @@
                 </div>
             </div>
             <div class="mt-4 flex items-center">
-                <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
-                </svg>
-                <span class="ml-1 text-sm text-green-600 dark:text-green-400">+5.1% from last month</span>
+                {% if current_month_revenue >= 0 %}
+                    <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                    </svg>
+                    <span class="ml-1 text-sm text-green-600 dark:text-green-400">Positive revenue</span>
+                {% else %}
+                    <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"></path>
+                    </svg>
+                    <span class="ml-1 text-sm text-red-600 dark:text-red-400">Revenue deficit</span>
+                {% endif %}
             </div>
         </div>
 

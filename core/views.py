@@ -11,9 +11,11 @@ from documents.models import Document, DocumentShare
 from maintenance.models import MaintenanceRequest
 from communication.models import MessageThread
 from properties.models import ApartmentUnit
-from financials.models import PaymentSchedule
+from financials.models import PaymentSchedule, RentPayment, ExpenseRecord
 from datetime import timedelta, date
 from django.utils import timezone
+from django.db.models import Sum, Q
+from decimal import Decimal
 from django.http import JsonResponse
 from django.core.mail import send_mail
 from django.conf import settings
@@ -89,6 +91,97 @@ def landlord_dashboard(request):
         participants=request.user
     ).prefetch_related('participants', 'messages').order_by('-updated_at')[:5]
     
+    # Financial calculations - Calculate based on occupied units' rent amounts
+    # Define date ranges first
+    current_month_start = timezone.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    
+    # Get occupied apartment units for the company
+    occupied_units_query = ApartmentUnit.objects.filter(
+        property__company=request.user.company,
+        is_occupied=True
+    )
+    
+    # Filter by property if landlord is assigned to specific property
+    if request.user.property:
+        occupied_units_query = occupied_units_query.filter(
+            property=request.user.property
+        )
+    
+    # Calculate current month potential income (sum of rent amounts for occupied units)
+    current_month_income = occupied_units_query.aggregate(
+        total=Sum('rent_amount')
+    )['total'] or Decimal('0.00')
+    
+    # For now, set last month income same as current (since we're showing potential income)
+    # In the future, this could track historical changes
+    last_month_income = current_month_income
+    income_change_percent = 0  # No change for now since we're showing potential income
+    
+    # Get expense data for the current month
+    expense_query = ExpenseRecord.objects.filter(
+        property__company=request.user.company,
+        expense_date__gte=current_month_start,
+        expense_date__lt=current_month_start + timedelta(days=32)
+    )
+    
+    if request.user.property:
+        expense_query = expense_query.filter(property=request.user.property)
+    
+    current_month_expenses = expense_query.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+    
+    # Calculate net revenue
+    current_month_revenue = current_month_income - current_month_expenses
+    
+    # Get available properties for the property selector
+    from properties.models import Property
+    available_properties = Property.objects.filter(company=request.user.company)
+    if request.user.property:
+        available_properties = available_properties.filter(id=request.user.property.id)
+    
+    # Get selected property from URL parameter
+    selected_property_id = request.GET.get('property')
+    selected_property = None
+    if selected_property_id:
+        try:
+            selected_property = Property.objects.get(
+                id=selected_property_id,
+                company=request.user.company
+            )
+            # Recalculate metrics for the selected property
+            occupied_units_query = ApartmentUnit.objects.filter(
+                property=selected_property,
+                is_occupied=True
+            )
+            current_month_income = occupied_units_query.aggregate(
+                total=Sum('rent_amount')
+            )['total'] or Decimal('0.00')
+            
+            # Recalculate expenses for selected property
+            expense_query = ExpenseRecord.objects.filter(
+                property=selected_property,
+                expense_date__gte=current_month_start,
+                expense_date__lt=current_month_start + timedelta(days=32)
+            )
+            current_month_expenses = expense_query.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+            current_month_revenue = current_month_income - current_month_expenses
+            
+            # Recalculate maintenance requests for selected property
+            company_maintenance_requests = MaintenanceRequest.objects.filter(
+                property=selected_property
+            )
+            total_maintenance_requests = company_maintenance_requests.count()
+            pending_requests = company_maintenance_requests.filter(status='SUBMITTED').count()
+            in_progress_requests = company_maintenance_requests.filter(status='IN_PROGRESS').count()
+            emergency_requests = company_maintenance_requests.filter(priority='EMERGENCY').count()
+            completed_this_month = company_maintenance_requests.filter(
+                status='COMPLETED',
+                completed_at__gte=timezone.now().replace(day=1)
+            ).count()
+            recent_maintenance_requests = company_maintenance_requests.order_by('-created_at')[:5]
+            
+        except Property.DoesNotExist:
+            selected_property = None
+    
     context = {
         'recent_documents': recent_documents,
         'company_doc_count': company_doc_count,
@@ -106,6 +199,15 @@ def landlord_dashboard(request):
         'recent_maintenance_requests': recent_maintenance_requests,
         # Communication data
         'recent_message_threads': recent_message_threads,
+        # Financial data
+        'current_month_income': current_month_income,
+        'last_month_income': last_month_income,
+        'income_change_percent': income_change_percent,
+        'current_month_expenses': current_month_expenses,
+        'current_month_revenue': current_month_revenue,
+        # Property selection data
+        'available_properties': available_properties,
+        'selected_property': selected_property,
     }
     
     return render(request, "dashboards/landlord.html", context)
@@ -517,3 +619,121 @@ def custom_login(request):
         form = AuthenticationForm()
     
     return render(request, 'accounts/login.html', {'form': form})
+
+@login_required
+def rent_income_detail(request):
+    """Detailed view for monthly rent income metrics"""
+    if not request.user.company:
+        messages.error(request, "You must be assigned to a company to access this page.")
+        return redirect("core:login")
+    
+    # Only allow landlords and employees to access this view
+    if request.user.role not in [User.Role.LANDLORD, User.Role.EMPLOYEE]:
+        messages.error(request, "You do not have permission to access this page.")
+        return redirect("core:dashboard_redirect")
+    
+    # Get property filter from URL parameter
+    property_id = request.GET.get('property')
+    selected_property = None
+    
+    if property_id:
+        try:
+            from properties.models import Property
+            selected_property = Property.objects.get(
+                id=property_id, 
+                company=request.user.company
+            )
+        except Property.DoesNotExist:
+            selected_property = None
+    
+    # Date range calculations
+    current_month_start = timezone.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    current_month_end = (current_month_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+    last_month_start = (current_month_start - timedelta(days=1)).replace(day=1)
+    last_month_end = current_month_start - timedelta(days=1)
+    
+    # Base query for rent payments
+    rent_payments_query = RentPayment.objects.filter(
+        payment_schedule__apartment_unit__property__company=request.user.company
+    ).select_related(
+        'payment_schedule__tenant',
+        'payment_schedule__apartment_unit',
+        'payment_schedule__apartment_unit__property'
+    )
+    
+    # Apply property filter
+    if selected_property:
+        rent_payments_query = rent_payments_query.filter(
+            payment_schedule__apartment_unit__property=selected_property
+        )
+    elif request.user.property:
+        rent_payments_query = rent_payments_query.filter(
+            payment_schedule__apartment_unit__property=request.user.property
+        )
+    
+    # Current month payments
+    current_month_payments = rent_payments_query.filter(
+        due_date__gte=current_month_start,
+        due_date__lte=current_month_end
+    ).order_by('-due_date', 'payment_schedule__apartment_unit__unit_number')
+    
+    # Previous month payments for comparison
+    last_month_payments = rent_payments_query.filter(
+        due_date__gte=last_month_start,
+        due_date__lte=last_month_end
+    )
+    
+    # Calculate totals
+    current_month_total = current_month_payments.filter(status='PAID').aggregate(
+        total=Sum('amount_paid')
+    )['total'] or Decimal('0.00')
+    
+    current_month_pending = current_month_payments.filter(status='PENDING').aggregate(
+        total=Sum('amount_due')
+    )['total'] or Decimal('0.00')
+    
+    current_month_overdue = current_month_payments.filter(status='OVERDUE').aggregate(
+        total=Sum('amount_due')
+    )['total'] or Decimal('0.00')
+    
+    last_month_total = last_month_payments.filter(status='PAID').aggregate(
+        total=Sum('amount_paid')
+    )['total'] or Decimal('0.00')
+    
+    # Calculate percentage change
+    if last_month_total > 0:
+        income_change_percent = ((current_month_total - last_month_total) / last_month_total) * 100
+    else:
+        income_change_percent = 0 if current_month_total == 0 else 100
+    
+    # Get available properties for filter dropdown
+    from properties.models import Property
+    available_properties = Property.objects.filter(company=request.user.company)
+    if request.user.property:
+        available_properties = available_properties.filter(id=request.user.property.id)
+    
+    # Status counts
+    paid_count = current_month_payments.filter(status='PAID').count()
+    pending_count = current_month_payments.filter(status='PENDING').count()
+    overdue_count = current_month_payments.filter(status='OVERDUE').count()
+    partial_count = current_month_payments.filter(status='PARTIAL').count()
+    
+    context = {
+        'current_month_payments': current_month_payments,
+        'current_month_total': current_month_total,
+        'current_month_pending': current_month_pending,
+        'current_month_overdue': current_month_overdue,
+        'last_month_total': last_month_total,
+        'income_change_percent': income_change_percent,
+        'selected_property': selected_property,
+        'available_properties': available_properties,
+        'current_month_start': current_month_start,
+        'current_month_end': current_month_end,
+        'paid_count': paid_count,
+        'pending_count': pending_count,
+        'overdue_count': overdue_count,
+        'partial_count': partial_count,
+        'total_payments': current_month_payments.count(),
+    }
+    
+    return render(request, 'dashboards/rent_income_detail.html', context)
