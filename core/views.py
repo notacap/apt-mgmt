@@ -12,6 +12,7 @@ from maintenance.models import MaintenanceRequest, MaintenanceInvoice, Maintenan
 from communication.models import MessageThread, Message, MessageReadStatus, Notification
 from properties.models import ApartmentUnit
 from financials.models import PaymentSchedule, RentPayment, ExpenseRecord
+from events.models import CalendarEvent, WorkSchedule
 from datetime import timedelta, date
 from django.utils import timezone
 from django.db.models import Sum, Q, Avg
@@ -597,6 +598,29 @@ def employee_dashboard(request):
         participants=request.user
     ).prefetch_related('participants', 'messages').order_by('-updated_at')[:5]
     
+    # Calendar events for today
+    today = timezone.localtime().date()
+    today_start = timezone.make_aware(timezone.datetime.combine(today, timezone.datetime.min.time()))
+    today_end = timezone.make_aware(timezone.datetime.combine(today, timezone.datetime.max.time()))
+    
+    # Get today's calendar events assigned to employee
+    todays_events_query = CalendarEvent.objects.filter(
+        assigned_to=request.user,
+        start_datetime__gte=today_start,
+        start_datetime__lte=today_end,
+        is_cancelled=False
+    ).select_related('property', 'apartment_unit', 'maintenance_request')
+    
+    # Filter by property if employee is assigned to specific property
+    if request.user.property:
+        todays_events_query = todays_events_query.filter(property=request.user.property)
+    
+    todays_events = todays_events_query.order_by('start_datetime')
+    todays_events_count = todays_events.count()
+    
+    # Get sample of today's events for display
+    todays_events_sample = todays_events[:3]
+    
     context = {
         'employee_uploads': employee_uploads,
         'shared_documents': shared_documents,
@@ -613,6 +637,9 @@ def employee_dashboard(request):
         'my_assigned_requests': my_assigned_requests,
         # Communication data
         'recent_message_threads': recent_message_threads,
+        # Calendar data
+        'todays_events_count': todays_events_count,
+        'todays_events_sample': todays_events_sample,
     }
     
     return render(request, "dashboards/employee.html", context)
@@ -3140,3 +3167,135 @@ def employee_assigned_tasks_detail(request):
     }
     
     return render(request, 'dashboards/employee_assigned_tasks_detail.html', context)
+
+@login_required
+def employee_todays_schedule_detail(request):
+    """Expanded view for employee today's schedule"""
+    
+    # Ensure user is an employee
+    if request.user.role != User.Role.EMPLOYEE:
+        return redirect('core:dashboard_redirect')
+    
+    if not request.user.company:
+        messages.error(request, "You must be assigned to a company to access this page.")
+        return redirect("core:login")
+    
+    # Get date filter (default to today)
+    date_filter = request.GET.get('date', '')
+    if date_filter:
+        try:
+            target_date = timezone.datetime.strptime(date_filter, '%Y-%m-%d').date()
+        except ValueError:
+            target_date = timezone.localtime().date()
+    else:
+        target_date = timezone.localtime().date()
+    
+    # Define date range for the target date
+    date_start = timezone.make_aware(timezone.datetime.combine(target_date, timezone.datetime.min.time()))
+    date_end = timezone.make_aware(timezone.datetime.combine(target_date, timezone.datetime.max.time()))
+    
+    # Get calendar events for the target date
+    events_query = CalendarEvent.objects.filter(
+        assigned_to=request.user,
+        start_datetime__gte=date_start,
+        start_datetime__lte=date_end,
+        is_cancelled=False
+    ).select_related('property', 'apartment_unit', 'maintenance_request', 'created_by')
+    
+    # Filter by property if employee is assigned to specific property
+    if request.user.property:
+        events_query = events_query.filter(property=request.user.property)
+    
+    # Apply filters
+    event_type_filter = request.GET.get('event_type', '')
+    priority_filter = request.GET.get('priority', '')
+    status_filter = request.GET.get('status', '')
+    search = request.GET.get('search', '')
+    
+    if event_type_filter:
+        events_query = events_query.filter(event_type=event_type_filter)
+    
+    if priority_filter:
+        events_query = events_query.filter(priority=priority_filter)
+    
+    if status_filter == 'completed':
+        events_query = events_query.filter(is_completed=True)
+    elif status_filter == 'pending':
+        events_query = events_query.filter(is_completed=False)
+    
+    if search:
+        events_query = events_query.filter(
+            Q(title__icontains=search) |
+            Q(description__icontains=search) |
+            Q(location_details__icontains=search) |
+            Q(apartment_unit__unit_number__icontains=search)
+        )
+    
+    # Order by start time
+    events = events_query.order_by('start_datetime')
+    
+    # Calculate summary statistics
+    total_events = events.count()
+    completed_events = events.filter(is_completed=True).count()
+    pending_events = events.filter(is_completed=False).count()
+    
+    # Event type breakdown
+    event_type_counts = {
+        'MAINTENANCE': events.filter(event_type='MAINTENANCE').count(),
+        'MEETING': events.filter(event_type='MEETING').count(),
+        'INSPECTION': events.filter(event_type='INSPECTION').count(),
+        'WORK_SCHEDULE': events.filter(event_type='WORK_SCHEDULE').count(),
+        'GENERAL': events.filter(event_type='GENERAL').count(),
+    }
+    
+    # Priority breakdown
+    priority_counts = {
+        'URGENT': events.filter(priority='URGENT').count(),
+        'HIGH': events.filter(priority='HIGH').count(),
+        'MEDIUM': events.filter(priority='MEDIUM').count(),
+        'LOW': events.filter(priority='LOW').count(),
+    }
+    
+    # Time-based statistics
+    morning_events = events.filter(start_datetime__hour__lt=12).count()  # Before noon
+    afternoon_events = events.filter(start_datetime__hour__gte=12, start_datetime__hour__lt=17).count()  # 12-5 PM
+    evening_events = events.filter(start_datetime__hour__gte=17).count()  # After 5 PM
+    
+    # Upcoming events (next 7 days) for context
+    next_week_start = timezone.now()
+    next_week_end = timezone.now() + timedelta(days=7)
+    upcoming_events_count = CalendarEvent.objects.filter(
+        assigned_to=request.user,
+        start_datetime__gte=next_week_start,
+        start_datetime__lte=next_week_end,
+        is_cancelled=False
+    ).count()
+    
+    # Previous/Next day navigation
+    previous_day = target_date - timedelta(days=1)
+    next_day = target_date + timedelta(days=1)
+    
+    context = {
+        'events': events,
+        'target_date': target_date,
+        'total_events': total_events,
+        'completed_events': completed_events,
+        'pending_events': pending_events,
+        'event_type_counts': event_type_counts,
+        'priority_counts': priority_counts,
+        'morning_events': morning_events,
+        'afternoon_events': afternoon_events,
+        'evening_events': evening_events,
+        'upcoming_events_count': upcoming_events_count,
+        'previous_day': previous_day,
+        'next_day': next_day,
+        'event_type_filter': event_type_filter,
+        'priority_filter': priority_filter,
+        'status_filter': status_filter,
+        'search': search,
+        'date_filter': date_filter,
+        'user_property': request.user.property,
+        'is_today': target_date == timezone.localtime().date(),
+    }
+    
+    return render(request, 'dashboards/employee_todays_schedule_detail.html', context)

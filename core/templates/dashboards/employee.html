@@ -50,12 +50,12 @@
         </a>
 
         <!-- Today's Schedule -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <a href="{% url 'core:employee_todays_schedule_detail' %}" class="block bg-white dark:bg-gray-800 rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow duration-200">
             <div class="flex items-center">
                 <div class="flex-1">
                     <p class="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Today's Schedule</p>
-                    <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">3</p>
-                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Appointments</p>
+                    <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">{{ todays_events_count }}</p>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Event{{ todays_events_count|pluralize }}</p>
                 </div>
                 <div class="flex-shrink-0">
                     <div class="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
@@ -65,7 +65,7 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </a>
 
         <!-- Pending Requests -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
@@ -328,47 +328,64 @@
             <div class="p-6 border-b border-gray-200 dark:border-gray-700">
                 <div class="flex items-center justify-between">
                     <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Today's Schedule</h3>
-                    <a href="#" class="text-blue-600 dark:text-blue-400 hover:underline text-sm">View Calendar</a>
+                    <a href="{% url 'events:calendar' %}" class="text-blue-600 dark:text-blue-400 hover:underline text-sm">View Calendar</a>
                 </div>
             </div>
             <div class="p-6">
-                <div class="space-y-4">
-                    <div class="flex items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                        <div class="flex-shrink-0 w-12 text-center">
-                            <p class="text-sm font-medium text-gray-900 dark:text-white">10:00</p>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">AM</p>
-                        </div>
-                        <div class="ml-4 flex-1">
-                            <p class="font-medium text-gray-900 dark:text-white">Inspect Unit 101</p>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Water leak assessment</p>
-                        </div>
-                        <span class="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 rounded-full">Urgent</span>
+                {% if todays_events_sample %}
+                    <div class="space-y-4">
+                        {% for event in todays_events_sample %}
+                            <div class="flex items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                                <div class="flex-shrink-0 w-12 text-center">
+                                    <p class="text-sm font-medium text-gray-900 dark:text-white">{{ event.start_datetime|date:"g:i" }}</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ event.start_datetime|date:"A" }}</p>
+                                </div>
+                                <div class="ml-4 flex-1">
+                                    <p class="font-medium text-gray-900 dark:text-white">{{ event.title }}</p>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">
+                                        {% if event.apartment_unit %}
+                                            {{ event.apartment_unit }} - {{ event.description|truncatechars:40 }}
+                                        {% elif event.location_details %}
+                                            {{ event.location_details }} - {{ event.description|truncatechars:40 }}
+                                        {% else %}
+                                            {{ event.description|truncatechars:60 }}
+                                        {% endif %}
+                                    </p>
+                                </div>
+                                {% if event.priority == 'URGENT' %}
+                                    <span class="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 rounded-full">Urgent</span>
+                                {% elif event.priority == 'HIGH' %}
+                                    <span class="px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 rounded-full">High</span>
+                                {% elif event.event_type == 'MAINTENANCE' %}
+                                    <span class="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 rounded-full">Maintenance</span>
+                                {% else %}
+                                    <span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-full">{{ event.get_event_type_display }}</span>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                        
+                        {% if todays_events_count > 3 %}
+                            <div class="mt-4 text-center">
+                                <a href="{% url 'core:employee_todays_schedule_detail' %}" class="text-blue-600 dark:text-blue-400 hover:underline text-sm">
+                                    View all {{ todays_events_count }} events today
+                                </a>
+                            </div>
+                        {% endif %}
                     </div>
-
-                    <div class="flex items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                        <div class="flex-shrink-0 w-12 text-center">
-                            <p class="text-sm font-medium text-gray-900 dark:text-white">2:00</p>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">PM</p>
+                {% else %}
+                    <div class="text-center py-8">
+                        <div class="text-gray-500 dark:text-gray-400">
+                            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                            </svg>
+                            <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No events scheduled</h3>
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">You don't have any events scheduled for today.</p>
+                            <div class="mt-4">
+                                <a href="{% url 'events:calendar' %}" class="text-blue-600 dark:text-blue-400 hover:underline text-sm">View your calendar</a>
+                            </div>
                         </div>
-                        <div class="ml-4 flex-1">
-                            <p class="font-medium text-gray-900 dark:text-white">HVAC Maintenance - Unit 304</p>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Replace air filter</p>
-                        </div>
-                        <span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-full">Scheduled</span>
                     </div>
-
-                    <div class="flex items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                        <div class="flex-shrink-0 w-12 text-center">
-                            <p class="text-sm font-medium text-gray-900 dark:text-white">4:30</p>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">PM</p>
-                        </div>
-                        <div class="ml-4 flex-1">
-                            <p class="font-medium text-gray-900 dark:text-white">Property Walkthrough</p>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Weekly safety inspection</p>
-                        </div>
-                        <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded-full">Routine</span>
-                    </div>
-                </div>
+                {% endif %}
             </div>
         </div>
     </div>
