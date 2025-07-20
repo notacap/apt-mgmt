@@ -75,11 +75,11 @@
 
 ## Phase 9: Detailed Views
 
-- [ ] Create expanded views for metric cards
-- [ ] Build maintenance request list with filters
-- [ ] Implement lease expiration report
-- [ ] Create tenant and employee list views
-- [ ] Add search and filter capabilities
+- [x] Create expanded views for metric cards
+- [x] Build maintenance request list with filters
+- [x] Implement lease expiration report
+- [x] Create tenant and employee list views
+- [x] Add search and filter capabilities
 
 ## Phase 10: Testing & Optimization
 

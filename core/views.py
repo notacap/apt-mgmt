@@ -15,7 +15,7 @@ from financials.models import PaymentSchedule, RentPayment, ExpenseRecord
 from events.models import CalendarEvent, WorkSchedule
 from datetime import timedelta, date
 from django.utils import timezone
-from django.db.models import Sum, Q, Avg
+from django.db.models import Sum, Q, Avg, Count
 from decimal import Decimal
 from django.http import JsonResponse
 from django.core.mail import send_mail
@@ -3299,3 +3299,334 @@ def employee_todays_schedule_detail(request):
     }
     
     return render(request, 'dashboards/employee_todays_schedule_detail.html', context)
+
+@login_required
+def employee_pending_requests_detail(request):
+    """Expanded view for employee pending maintenance requests"""
+    
+    # Ensure user is an employee
+    if request.user.role != User.Role.EMPLOYEE:
+        return redirect('core:dashboard_redirect')
+    
+    if not request.user.company:
+        messages.error(request, "You must be assigned to a company to access this page.")
+        return redirect("core:login")
+    
+    # Get all maintenance requests for the company
+    maintenance_requests = MaintenanceRequest.objects.filter(
+        property__company=request.user.company
+    ).select_related('property', 'apartment_unit', 'assigned_to', 'tenant', 'category')
+    
+    # Filter by property if employee is assigned to specific property
+    if request.user.property:
+        maintenance_requests = maintenance_requests.filter(property=request.user.property)
+    
+    # Base queryset for pending requests (unassigned SUBMITTED requests)
+    pending_requests = maintenance_requests.filter(
+        status='SUBMITTED',
+        assigned_to__isnull=True
+    )
+    
+    # Apply filters
+    priority_filter = request.GET.get('priority', '')
+    category_filter = request.GET.get('category', '')
+    property_filter = request.GET.get('property', '')
+    age_filter = request.GET.get('age', '')
+    search = request.GET.get('search', '')
+    
+    if priority_filter:
+        pending_requests = pending_requests.filter(priority=priority_filter)
+    
+    if category_filter:
+        pending_requests = pending_requests.filter(category_id=category_filter)
+    
+    if property_filter:
+        pending_requests = pending_requests.filter(property_id=property_filter)
+    
+    if age_filter:
+        if age_filter == '24h':
+            cutoff = timezone.now() - timedelta(hours=24)
+            pending_requests = pending_requests.filter(created_at__gte=cutoff)
+        elif age_filter == '3d':
+            cutoff = timezone.now() - timedelta(days=3)
+            pending_requests = pending_requests.filter(created_at__gte=cutoff)
+        elif age_filter == '1w':
+            cutoff = timezone.now() - timedelta(days=7)
+            pending_requests = pending_requests.filter(created_at__gte=cutoff)
+        elif age_filter == 'old':
+            cutoff = timezone.now() - timedelta(days=7)
+            pending_requests = pending_requests.filter(created_at__lt=cutoff)
+    
+    if search:
+        pending_requests = pending_requests.filter(
+            Q(title__icontains=search) |
+            Q(description__icontains=search) |
+            Q(apartment_unit__unit_number__icontains=search) |
+            Q(tenant__first_name__icontains=search) |
+            Q(tenant__last_name__icontains=search)
+        )
+    
+    # Order by priority and age (oldest first within same priority)
+    pending_requests = pending_requests.order_by(
+        '-priority',  # Emergency first, then High, Medium, Low
+        'created_at'  # Oldest first within same priority
+    )
+    
+    # Calculate summary statistics
+    total_pending = pending_requests.count()
+    
+    # Priority breakdown
+    priority_counts = {
+        'EMERGENCY': pending_requests.filter(priority='EMERGENCY').count(),
+        'HIGH': pending_requests.filter(priority='HIGH').count(),
+        'MEDIUM': pending_requests.filter(priority='MEDIUM').count(),
+        'LOW': pending_requests.filter(priority='LOW').count(),
+    }
+    
+    # Age breakdown
+    now = timezone.now()
+    age_counts = {
+        'new': pending_requests.filter(created_at__gte=now - timedelta(hours=24)).count(),
+        'recent': pending_requests.filter(
+            created_at__gte=now - timedelta(days=3),
+            created_at__lt=now - timedelta(hours=24)
+        ).count(),
+        'old': pending_requests.filter(created_at__lt=now - timedelta(days=7)).count(),
+    }
+    
+    # Property breakdown (if user has access to multiple properties)
+    property_counts = {}
+    if not request.user.property:  # Employee has company-wide access
+        property_breakdown = pending_requests.values('property__name').annotate(
+            count=Count('id')
+        ).order_by('-count')
+        for item in property_breakdown:
+            property_counts[item['property__name']] = item['count']
+    
+    # Category breakdown
+    category_breakdown = pending_requests.values('category__name').annotate(
+        count=Count('id')
+    ).order_by('-count')
+    category_counts = {}
+    for item in category_breakdown:
+        category_counts[item['category__name'] or 'No Category'] = item['count']
+    
+    # Get oldest pending request for urgency indicator
+    oldest_request = pending_requests.order_by('created_at').first()
+    oldest_days = None
+    if oldest_request:
+        oldest_days = (timezone.now() - oldest_request.created_at).days
+    
+    # Get available categories and properties for filter dropdown
+    categories = MaintenanceCategory.objects.all()
+    
+    # Get available properties (only if employee has company-wide access)
+    available_properties = []
+    if not request.user.property:
+        available_properties = request.user.company.properties.all()
+    
+    # Pagination
+    from django.core.paginator import Paginator
+    paginator = Paginator(pending_requests, 12)  # Show 12 requests per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'pending_requests': page_obj,
+        'total_pending': total_pending,
+        'priority_counts': priority_counts,
+        'age_counts': age_counts,
+        'property_counts': property_counts,
+        'category_counts': category_counts,
+        'oldest_days': oldest_days,
+        'categories': categories,
+        'available_properties': available_properties,
+        'priority_filter': priority_filter,
+        'category_filter': category_filter,
+        'property_filter': property_filter,
+        'age_filter': age_filter,
+        'search': search,
+        'user_property': request.user.property,
+    }
+    
+    return render(request, 'dashboards/employee_pending_requests_detail.html', context)
+
+@login_required
+def employee_emergency_requests_detail(request):
+    """Expanded view for employee emergency maintenance requests"""
+    
+    # Ensure user is an employee
+    if request.user.role != User.Role.EMPLOYEE:
+        return redirect('core:dashboard_redirect')
+    
+    if not request.user.company:
+        messages.error(request, "You must be assigned to a company to access this page.")
+        return redirect("core:login")
+    
+    # Get all maintenance requests for the company
+    maintenance_requests = MaintenanceRequest.objects.filter(
+        property__company=request.user.company
+    ).select_related('property', 'apartment_unit', 'assigned_to', 'tenant', 'category')
+    
+    # Filter by property if employee is assigned to specific property
+    if request.user.property:
+        maintenance_requests = maintenance_requests.filter(property=request.user.property)
+    
+    # Base queryset for emergency requests (priority='EMERGENCY')
+    emergency_requests = maintenance_requests.filter(priority='EMERGENCY')
+    
+    # Apply filters
+    status_filter = request.GET.get('status', '')
+    category_filter = request.GET.get('category', '')
+    property_filter = request.GET.get('property', '')
+    assignment_filter = request.GET.get('assignment', '')
+    age_filter = request.GET.get('age', '')
+    search = request.GET.get('search', '')
+    
+    if status_filter:
+        emergency_requests = emergency_requests.filter(status=status_filter)
+    
+    if category_filter:
+        emergency_requests = emergency_requests.filter(category_id=category_filter)
+    
+    if property_filter:
+        emergency_requests = emergency_requests.filter(property_id=property_filter)
+    
+    if assignment_filter:
+        if assignment_filter == 'assigned':
+            emergency_requests = emergency_requests.filter(assigned_to__isnull=False)
+        elif assignment_filter == 'unassigned':
+            emergency_requests = emergency_requests.filter(assigned_to__isnull=True)
+        elif assignment_filter == 'assigned_to_me':
+            emergency_requests = emergency_requests.filter(assigned_to=request.user)
+    
+    if age_filter:
+        if age_filter == '1h':
+            cutoff = timezone.now() - timedelta(hours=1)
+            emergency_requests = emergency_requests.filter(created_at__gte=cutoff)
+        elif age_filter == '6h':
+            cutoff = timezone.now() - timedelta(hours=6)
+            emergency_requests = emergency_requests.filter(created_at__gte=cutoff)
+        elif age_filter == '24h':
+            cutoff = timezone.now() - timedelta(hours=24)
+            emergency_requests = emergency_requests.filter(created_at__gte=cutoff)
+        elif age_filter == 'old':
+            cutoff = timezone.now() - timedelta(hours=24)
+            emergency_requests = emergency_requests.filter(created_at__lt=cutoff)
+    
+    if search:
+        emergency_requests = emergency_requests.filter(
+            Q(title__icontains=search) |
+            Q(description__icontains=search) |
+            Q(apartment_unit__unit_number__icontains=search) |
+            Q(tenant__first_name__icontains=search) |
+            Q(tenant__last_name__icontains=search)
+        )
+    
+    # Order by created date (newest first for emergency)
+    emergency_requests = emergency_requests.order_by('-created_at')
+    
+    # Calculate summary statistics
+    total_emergency = emergency_requests.count()
+    
+    # Status breakdown
+    status_counts = {
+        'SUBMITTED': emergency_requests.filter(status='SUBMITTED').count(),
+        'IN_PROGRESS': emergency_requests.filter(status='IN_PROGRESS').count(),
+        'SCHEDULED': emergency_requests.filter(status='SCHEDULED').count(),
+        'COMPLETED': emergency_requests.filter(status='COMPLETED').count(),
+    }
+    
+    # Assignment breakdown
+    assignment_counts = {
+        'unassigned': emergency_requests.filter(assigned_to__isnull=True).count(),
+        'assigned': emergency_requests.filter(assigned_to__isnull=False).count(),
+        'assigned_to_me': emergency_requests.filter(assigned_to=request.user).count(),
+    }
+    
+    # Time-based breakdown (critical for emergency requests)
+    now = timezone.now()
+    time_counts = {
+        'last_hour': emergency_requests.filter(created_at__gte=now - timedelta(hours=1)).count(),
+        'last_6_hours': emergency_requests.filter(created_at__gte=now - timedelta(hours=6)).count(),
+        'last_24_hours': emergency_requests.filter(created_at__gte=now - timedelta(hours=24)).count(),
+        'older': emergency_requests.filter(created_at__lt=now - timedelta(hours=24)).count(),
+    }
+    
+    # Property breakdown (if user has access to multiple properties)
+    property_counts = {}
+    if not request.user.property:  # Employee has company-wide access
+        property_breakdown = emergency_requests.values('property__name').annotate(
+            count=Count('id')
+        ).order_by('-count')
+        for item in property_breakdown:
+            property_counts[item['property__name']] = item['count']
+    
+    # Category breakdown
+    category_breakdown = emergency_requests.values('category__name').annotate(
+        count=Count('id')
+    ).order_by('-count')
+    category_counts = {}
+    for item in category_breakdown:
+        category_counts[item['category__name'] or 'No Category'] = item['count']
+    
+    # Response time analysis for completed requests
+    completed_emergency = emergency_requests.filter(status='COMPLETED')
+    avg_response_time_hours = None
+    if completed_emergency.exists():
+        response_times = []
+        for req in completed_emergency:
+            if req.completed_at:
+                response_time = (req.completed_at - req.created_at).total_seconds() / 3600  # hours
+                response_times.append(response_time)
+        if response_times:
+            avg_response_time_hours = sum(response_times) / len(response_times)
+    
+    # Critical alerts
+    critical_unassigned = emergency_requests.filter(
+        assigned_to__isnull=True,
+        created_at__lt=now - timedelta(hours=1)
+    ).count()
+    
+    overdue_in_progress = emergency_requests.filter(
+        status='IN_PROGRESS',
+        created_at__lt=now - timedelta(hours=12)
+    ).count()
+    
+    # Get available categories and properties for filter dropdown
+    categories = MaintenanceCategory.objects.all()
+    
+    # Get available properties (only if employee has company-wide access)
+    available_properties = []
+    if not request.user.property:
+        available_properties = request.user.company.properties.all()
+    
+    # Pagination
+    from django.core.paginator import Paginator
+    paginator = Paginator(emergency_requests, 10)  # Show 10 requests per page for emergency
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'emergency_requests': page_obj,
+        'total_emergency': total_emergency,
+        'status_counts': status_counts,
+        'assignment_counts': assignment_counts,
+        'time_counts': time_counts,
+        'property_counts': property_counts,
+        'category_counts': category_counts,
+        'avg_response_time_hours': avg_response_time_hours,
+        'critical_unassigned': critical_unassigned,
+        'overdue_in_progress': overdue_in_progress,
+        'categories': categories,
+        'available_properties': available_properties,
+        'status_filter': status_filter,
+        'category_filter': category_filter,
+        'property_filter': property_filter,
+        'assignment_filter': assignment_filter,
+        'age_filter': age_filter,
+        'search': search,
+        'user_property': request.user.property,
+    }
+    
+    return render(request, 'dashboards/employee_emergency_requests_detail.html', context)

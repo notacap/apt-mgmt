@@ -1,0 +1,473 @@
+{% extends "base.html" %}
+
+{% block title %}Emergency Requests - Employee Dashboard{% endblock %}
+
+{% block content %}
+<div class="container mx-auto max-w-7xl">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 space-y-4 sm:space-y-0">
+        <div>
+            <h1 class="text-3xl font-bold text-red-600 dark:text-red-400">Emergency Maintenance Requests</h1>
+            <p class="text-gray-600 dark:text-gray-400 mt-1">
+                {% if user_property %}
+                    {{ user_property.name }} - 
+                {% endif %}
+                Critical priority requests requiring immediate attention
+            </p>
+        </div>
+        <div class="flex space-x-2">
+            <a href="{% url 'core:employee_dashboard' %}" class="bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                </svg>
+                Back to Dashboard
+            </a>
+            <a href="{% url 'maintenance:list' %}" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                All Requests
+            </a>
+        </div>
+    </div>
+
+    <!-- Critical Alerts -->
+    {% if critical_unassigned > 0 or overdue_in_progress > 0 %}
+        <div class="mb-6 space-y-4">
+            {% if critical_unassigned > 0 %}
+                <div class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                    <div class="flex items-center">
+                        <svg class="w-5 h-5 text-red-600 dark:text-red-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.19 2.5 1.732 2.5z"/>
+                        </svg>
+                        <div>
+                            <h3 class="text-sm font-medium text-red-800 dark:text-red-300">Critical Alert</h3>
+                            <p class="text-sm text-red-700 dark:text-red-400">{{ critical_unassigned }} emergency request{{ critical_unassigned|pluralize }} unassigned for over 1 hour!</p>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+            
+            {% if overdue_in_progress > 0 %}
+                <div class="p-4 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
+                    <div class="flex items-center">
+                        <svg class="w-5 h-5 text-orange-600 dark:text-orange-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <div>
+                            <h3 class="text-sm font-medium text-orange-800 dark:text-orange-300">Overdue Alert</h3>
+                            <p class="text-sm text-orange-700 dark:text-orange-400">{{ overdue_in_progress }} emergency request{{ overdue_in_progress|pluralize }} in progress for over 12 hours.</p>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <!-- Total Emergency -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-1">
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Total Emergency</p>
+                    <p class="mt-2 text-3xl font-bold text-red-600 dark:text-red-400">{{ total_emergency }}</p>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Critical priority requests</p>
+                </div>
+                <div class="flex-shrink-0">
+                    <div class="w-10 h-10 bg-red-100 dark:bg-red-900 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.19 2.5 1.732 2.5z"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Unassigned -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-1">
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Unassigned</p>
+                    <p class="mt-2 text-3xl font-bold text-orange-600 dark:text-orange-400">{{ assignment_counts.unassigned }}</p>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Need immediate assignment</p>
+                </div>
+                <div class="flex-shrink-0">
+                    <div class="w-10 h-10 bg-orange-100 dark:bg-orange-900 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- In Progress -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-1">
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">In Progress</p>
+                    <p class="mt-2 text-3xl font-bold text-blue-600 dark:text-blue-400">{{ status_counts.IN_PROGRESS }}</p>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Currently being worked on</p>
+                </div>
+                <div class="flex-shrink-0">
+                    <div class="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent (Last Hour) -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-1">
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Last Hour</p>
+                    <p class="mt-2 text-3xl font-bold text-purple-600 dark:text-purple-400">{{ time_counts.last_hour }}</p>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">New emergencies</p>
+                </div>
+                <div class="flex-shrink-0">
+                    <div class="w-10 h-10 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <!-- Filters and Statistics -->
+        <div class="lg:col-span-1">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 sticky top-6">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Filters</h3>
+                
+                <form method="GET" class="space-y-4">
+                    <!-- Search -->
+                    <div>
+                        <label for="search" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Search</label>
+                        <input type="text" id="search" name="search" value="{{ search }}" 
+                               placeholder="Title, description, unit, tenant..."
+                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <!-- Status Filter -->
+                    <div>
+                        <label for="status" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
+                        <select id="status" name="status" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">All Statuses</option>
+                            <option value="SUBMITTED" {% if status_filter == 'SUBMITTED' %}selected{% endif %}>Submitted</option>
+                            <option value="IN_PROGRESS" {% if status_filter == 'IN_PROGRESS' %}selected{% endif %}>In Progress</option>
+                            <option value="SCHEDULED" {% if status_filter == 'SCHEDULED' %}selected{% endif %}>Scheduled</option>
+                            <option value="COMPLETED" {% if status_filter == 'COMPLETED' %}selected{% endif %}>Completed</option>
+                        </select>
+                    </div>
+
+                    <!-- Assignment Filter -->
+                    <div>
+                        <label for="assignment" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Assignment</label>
+                        <select id="assignment" name="assignment" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">All Assignments</option>
+                            <option value="unassigned" {% if assignment_filter == 'unassigned' %}selected{% endif %}>Unassigned</option>
+                            <option value="assigned" {% if assignment_filter == 'assigned' %}selected{% endif %}>Assigned</option>
+                            <option value="assigned_to_me" {% if assignment_filter == 'assigned_to_me' %}selected{% endif %}>Assigned to Me</option>
+                        </select>
+                    </div>
+
+                    <!-- Category Filter -->
+                    <div>
+                        <label for="category" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Category</label>
+                        <select id="category" name="category" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">All Categories</option>
+                            {% for category in categories %}
+                                <option value="{{ category.id }}" {% if category_filter == category.id|stringformat:"s" %}selected{% endif %}>{{ category.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Property Filter (only show if employee has company-wide access) -->
+                    {% if available_properties %}
+                        <div>
+                            <label for="property" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Property</label>
+                            <select id="property" name="property" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">All Properties</option>
+                                {% for property in available_properties %}
+                                    <option value="{{ property.id }}" {% if property_filter == property.id|stringformat:"s" %}selected{% endif %}>{{ property.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    {% endif %}
+
+                    <!-- Age Filter -->
+                    <div>
+                        <label for="age" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Request Age</label>
+                        <select id="age" name="age" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">All Ages</option>
+                            <option value="1h" {% if age_filter == '1h' %}selected{% endif %}>Last hour</option>
+                            <option value="6h" {% if age_filter == '6h' %}selected{% endif %}>Last 6 hours</option>
+                            <option value="24h" {% if age_filter == '24h' %}selected{% endif %}>Last 24 hours</option>
+                            <option value="old" {% if age_filter == 'old' %}selected{% endif %}>Older than 24h</option>
+                        </select>
+                    </div>
+
+                    <!-- Filter Buttons -->
+                    <div class="space-y-2">
+                        <button type="submit" class="w-full bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">
+                            Apply Filters
+                        </button>
+                        <a href="{% url 'core:employee_emergency_requests_detail' %}" class="w-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 text-center block">
+                            Clear Filters
+                        </a>
+                    </div>
+                </form>
+
+                <!-- Statistics Sidebar -->
+                <div class="mt-8 space-y-4">
+                    <h4 class="text-md font-semibold text-gray-900 dark:text-white">Status Breakdown</h4>
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-orange-600 dark:text-orange-400">Submitted</span>
+                            <span class="text-sm font-medium text-gray-900 dark:text-white">{{ status_counts.SUBMITTED }}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-blue-600 dark:text-blue-400">In Progress</span>
+                            <span class="text-sm font-medium text-gray-900 dark:text-white">{{ status_counts.IN_PROGRESS }}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-purple-600 dark:text-purple-400">Scheduled</span>
+                            <span class="text-sm font-medium text-gray-900 dark:text-white">{{ status_counts.SCHEDULED }}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-green-600 dark:text-green-400">Completed</span>
+                            <span class="text-sm font-medium text-gray-900 dark:text-white">{{ status_counts.COMPLETED }}</span>
+                        </div>
+                    </div>
+
+                    <h4 class="text-md font-semibold text-gray-900 dark:text-white mt-6">Time Distribution</h4>
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-red-600 dark:text-red-400">Last Hour</span>
+                            <span class="text-sm font-medium text-gray-900 dark:text-white">{{ time_counts.last_hour }}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-orange-600 dark:text-orange-400">Last 6 Hours</span>
+                            <span class="text-sm font-medium text-gray-900 dark:text-white">{{ time_counts.last_6_hours }}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-yellow-600 dark:text-yellow-400">Last 24 Hours</span>
+                            <span class="text-sm font-medium text-gray-900 dark:text-white">{{ time_counts.last_24_hours }}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-600 dark:text-gray-400">Older</span>
+                            <span class="text-sm font-medium text-gray-900 dark:text-white">{{ time_counts.older }}</span>
+                        </div>
+                    </div>
+
+                    <h4 class="text-md font-semibold text-gray-900 dark:text-white mt-6">Assignment Status</h4>
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-red-600 dark:text-red-400">Unassigned</span>
+                            <span class="text-sm font-medium text-gray-900 dark:text-white">{{ assignment_counts.unassigned }}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-blue-600 dark:text-blue-400">Assigned to Me</span>
+                            <span class="text-sm font-medium text-gray-900 dark:text-white">{{ assignment_counts.assigned_to_me }}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-600 dark:text-gray-400">Total Assigned</span>
+                            <span class="text-sm font-medium text-gray-900 dark:text-white">{{ assignment_counts.assigned }}</span>
+                        </div>
+                    </div>
+
+                    {% if avg_response_time_hours %}
+                        <div class="mt-6 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                            <h4 class="text-sm font-semibold text-green-800 dark:text-green-300">Avg Response Time</h4>
+                            <p class="text-lg font-bold text-green-900 dark:text-green-200">{{ avg_response_time_hours|floatformat:1 }}h</p>
+                            <p class="text-xs text-green-600 dark:text-green-400">For completed emergencies</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Emergency Requests List -->
+        <div class="lg:col-span-3">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+                <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                            Emergency Requests 
+                            {% if emergency_requests.object_list %}
+                                ({{ emergency_requests.paginator.count }} total)
+                            {% endif %}
+                        </h3>
+                        {% if user_property %}
+                            <span class="text-sm text-gray-500 dark:text-gray-400">Property: {{ user_property.name }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="p-6">
+                    {% if emergency_requests.object_list %}
+                        <div class="space-y-4">
+                            {% for request in emergency_requests %}
+                                <div class="border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 rounded-lg p-4">
+                                    <div class="flex items-start justify-between">
+                                        <div class="flex-1">
+                                            <div class="flex items-center space-x-2 mb-2">
+                                                <!-- Emergency Badge -->
+                                                <span class="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 rounded-full">
+                                                    <svg class="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.19 2.5 1.732 2.5z"/>
+                                                    </svg>
+                                                    EMERGENCY
+                                                </span>
+                                                
+                                                <!-- Status Badge -->
+                                                {% if request.status == 'COMPLETED' %}
+                                                    <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded-full">Completed</span>
+                                                {% elif request.status == 'IN_PROGRESS' %}
+                                                    <span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-full">In Progress</span>
+                                                {% elif request.status == 'SCHEDULED' %}
+                                                    <span class="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 rounded-full">Scheduled</span>
+                                                {% else %}
+                                                    <span class="px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 rounded-full">{{ request.get_status_display }}</span>
+                                                {% endif %}
+                                                
+                                                <!-- Assignment Badge -->
+                                                {% if not request.assigned_to %}
+                                                    <span class="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 rounded-full">Unassigned</span>
+                                                {% elif request.assigned_to == user %}
+                                                    <span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-full">Assigned to Me</span>
+                                                {% else %}
+                                                    <span class="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200 rounded-full">Assigned to {{ request.assigned_to.get_full_name|default:request.assigned_to.username }}</span>
+                                                {% endif %}
+                                                
+                                                <!-- Location -->
+                                                {% if request.apartment_unit %}
+                                                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ request.apartment_unit }}</span>
+                                                {% else %}
+                                                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ request.property.name }}</span>
+                                                {% endif %}
+
+                                                <!-- Time indicator -->
+                                                {% with hours_ago=request.created_at|timesince %}
+                                                    {% if 'minute' in hours_ago %}
+                                                        <span class="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 rounded-full">{{ hours_ago }} ago</span>
+                                                    {% elif 'hour' in hours_ago %}
+                                                        {% if '1 hour' in hours_ago %}
+                                                            <span class="px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 rounded-full">{{ hours_ago }} ago</span>
+                                                        {% else %}
+                                                            <span class="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 rounded-full">{{ hours_ago }} ago</span>
+                                                        {% endif %}
+                                                    {% elif 'day' in hours_ago %}
+                                                        <span class="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 rounded-full">{{ hours_ago }} ago</span>
+                                                    {% endif %}
+                                                {% endwith %}
+                                            </div>
+                                            
+                                            <h4 class="font-medium text-gray-900 dark:text-white">{{ request.title }}</h4>
+                                            <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">{{ request.description|truncatechars:150 }}</p>
+                                            
+                                            <!-- Additional Details -->
+                                            <div class="mt-2 space-y-1">
+                                                {% if request.category %}
+                                                    <p class="text-xs text-gray-500 dark:text-gray-500">Category: {{ request.category.name }}</p>
+                                                {% endif %}
+                                                {% if request.tenant %}
+                                                    <p class="text-xs text-gray-500 dark:text-gray-500">Requested by: {{ request.tenant.get_full_name|default:request.tenant.username }}</p>
+                                                {% endif %}
+                                                <p class="text-xs text-gray-500 dark:text-gray-500">Submitted {{ request.created_at|timesince }} ago ({{ request.created_at|date:"M d, Y g:i A" }})</p>
+                                                {% if request.scheduled_date %}
+                                                    <p class="text-xs text-purple-600 dark:text-purple-400">Scheduled: {{ request.scheduled_date|date:"M d, Y g:i A" }}</p>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Action Buttons -->
+                                    <div class="mt-3 flex space-x-2">
+                                        {% if not request.assigned_to %}
+                                            <a href="{% url 'maintenance:detail' request.pk %}" class="px-3 py-1 text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 rounded hover:bg-red-200 dark:hover:bg-red-800">
+                                                URGENT: Assign Now
+                                            </a>
+                                        {% elif request.status != 'COMPLETED' %}
+                                            <a href="{% url 'maintenance:detail' request.pk %}" class="px-3 py-1 text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded hover:bg-blue-200 dark:hover:bg-blue-800">
+                                                Update Status
+                                            </a>
+                                        {% endif %}
+                                        <a href="{% url 'maintenance:detail' request.pk %}" class="px-3 py-1 text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 rounded hover:bg-gray-200 dark:hover:bg-gray-600">
+                                            View Details
+                                        </a>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        <!-- Pagination -->
+                        {% if emergency_requests.has_other_pages %}
+                            <div class="mt-8 flex items-center justify-between">
+                                <div class="flex items-center space-x-2">
+                                    {% if emergency_requests.has_previous %}
+                                        <a href="?page={{ emergency_requests.previous_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if category_filter %}&category={{ category_filter }}{% endif %}{% if property_filter %}&property={{ property_filter }}{% endif %}{% if assignment_filter %}&assignment={{ assignment_filter }}{% endif %}{% if age_filter %}&age={{ age_filter }}{% endif %}{% if search %}&search={{ search }}{% endif %}" 
+                                           class="px-3 py-2 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600">
+                                            Previous
+                                        </a>
+                                    {% endif %}
+                                    
+                                    <span class="text-sm text-gray-700 dark:text-gray-300">
+                                        Page {{ emergency_requests.number }} of {{ emergency_requests.paginator.num_pages }}
+                                    </span>
+                                    
+                                    {% if emergency_requests.has_next %}
+                                        <a href="?page={{ emergency_requests.next_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if category_filter %}&category={{ category_filter }}{% endif %}{% if property_filter %}&property={{ property_filter }}{% endif %}{% if assignment_filter %}&assignment={{ assignment_filter }}{% endif %}{% if age_filter %}&age={{ age_filter }}{% endif %}{% if search %}&search={{ search }}{% endif %}" 
+                                           class="px-3 py-2 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600">
+                                            Next
+                                        </a>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="text-sm text-gray-500 dark:text-gray-400">
+                                    Showing {{ emergency_requests.start_index }} to {{ emergency_requests.end_index }} of {{ emergency_requests.paginator.count }} emergency requests
+                                </div>
+                            </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="text-center py-12">
+                            <div class="text-gray-500 dark:text-gray-400">
+                                <svg class="mx-auto h-12 w-12 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No emergency requests found</h3>
+                                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                                    {% if status_filter or category_filter or property_filter or assignment_filter or age_filter or search %}
+                                        Try adjusting your filters to see more requests.
+                                    {% else %}
+                                        Great! No emergency maintenance requests at this time.
+                                    {% endif %}
+                                </p>
+                                {% if status_filter or category_filter or property_filter or assignment_filter or age_filter or search %}
+                                    <div class="mt-6">
+                                        <a href="{% url 'core:employee_emergency_requests_detail' %}" 
+                                           class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                            Clear Filters
+                                        </a>
+                                    </div>
+                                {% else %}
+                                    <div class="mt-6">
+                                        <a href="{% url 'maintenance:list' %}" 
+                                           class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                            View All Requests
+                                        </a>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

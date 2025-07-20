@@ -68,7 +68,7 @@
         </a>
 
         <!-- Pending Requests -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <a href="{% url 'core:employee_pending_requests_detail' %}" class="block bg-white dark:bg-gray-800 rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow duration-200">
             <div class="flex items-center">
                 <div class="flex-1">
                     <p class="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Pending Requests</p>
@@ -83,14 +83,14 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </a>
 
         <!-- Emergency Requests -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <a href="{% url 'core:employee_emergency_requests_detail' %}" class="block bg-white dark:bg-gray-800 rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow duration-200">
             <div class="flex items-center">
                 <div class="flex-1">
                     <p class="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Emergency</p>
-                    <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">{{ emergency_requests }}</p>
+                    <p class="mt-2 text-3xl font-bold text-red-600 dark:text-red-400">{{ emergency_requests }}</p>
                     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">High priority requests</p>
                 </div>
                 <div class="flex-shrink-0">
@@ -101,7 +101,7 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </a>
     </div>
 
     <!-- Document Management Section -->
