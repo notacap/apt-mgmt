@@ -20,6 +20,7 @@ from .views import (
     lease_expirations_detail,
     vacant_units_detail,
     tenant_list,
+    employee_assigned_tasks_detail,
     tenant_rent_status_detail,
     tenant_lease_end_detail,
     tenant_maintenance_requests_detail,
@@ -48,6 +49,8 @@ urlpatterns = [
     path("dashboard/lease-expirations/", lease_expirations_detail, name="lease_expirations_detail"),
     path("dashboard/vacant-units/", vacant_units_detail, name="vacant_units_detail"),
     path("dashboard/tenants/", tenant_list, name="tenant_list"),
+    # Employee expanded views
+    path("dashboard/employee/assigned-tasks/", employee_assigned_tasks_detail, name="employee_assigned_tasks_detail"),
     # Tenant expanded views
     path("dashboard/tenant/rent-status/", tenant_rent_status_detail, name="tenant_rent_status_detail"),
     path("dashboard/tenant/lease-end/", tenant_lease_end_detail, name="tenant_lease_end_detail"),

@@ -31,7 +31,7 @@
     <!-- Summary Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <!-- Assigned Maintenance Requests -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <a href="{% url 'core:employee_assigned_tasks_detail' %}" class="block bg-white dark:bg-gray-800 rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow duration-200">
             <div class="flex items-center">
                 <div class="flex-1">
                     <p class="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Assigned Tasks</p>
@@ -47,7 +47,7 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </a>
 
         <!-- Today's Schedule -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">

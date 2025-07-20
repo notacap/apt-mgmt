@@ -3017,3 +3017,126 @@ def tenant_messages_detail(request):
     }
     
     return render(request, 'dashboards/tenant_messages_detail.html', context)
+
+@login_required
+def employee_assigned_tasks_detail(request):
+    """Expanded view for employee assigned maintenance tasks"""
+    
+    # Ensure user is an employee
+    if request.user.role != User.Role.EMPLOYEE:
+        return redirect('core:dashboard_redirect')
+    
+    if not request.user.company:
+        messages.error(request, "You must be assigned to a company to access this page.")
+        return redirect("core:login")
+    
+    # Get all maintenance requests for the company
+    maintenance_requests = MaintenanceRequest.objects.filter(
+        property__company=request.user.company
+    ).select_related('property', 'apartment_unit', 'assigned_to', 'tenant', 'category')
+    
+    # Filter by property if employee is assigned to specific property
+    if request.user.property:
+        maintenance_requests = maintenance_requests.filter(property=request.user.property)
+    
+    # Base queryset for assigned tasks (only tasks assigned to current employee)
+    assigned_tasks = maintenance_requests.filter(assigned_to=request.user)
+    
+    # Apply filters
+    status_filter = request.GET.get('status', '')
+    priority_filter = request.GET.get('priority', '')
+    category_filter = request.GET.get('category', '')
+    search = request.GET.get('search', '')
+    
+    if status_filter:
+        assigned_tasks = assigned_tasks.filter(status=status_filter)
+    
+    if priority_filter:
+        assigned_tasks = assigned_tasks.filter(priority=priority_filter)
+    
+    if category_filter:
+        assigned_tasks = assigned_tasks.filter(category_id=category_filter)
+    
+    if search:
+        assigned_tasks = assigned_tasks.filter(
+            Q(title__icontains=search) |
+            Q(description__icontains=search) |
+            Q(apartment_unit__unit_number__icontains=search) |
+            Q(tenant__first_name__icontains=search) |
+            Q(tenant__last_name__icontains=search)
+        )
+    
+    # Order by priority and created date
+    assigned_tasks = assigned_tasks.order_by(
+        '-priority',  # Emergency first, then High, Medium, Low
+        '-created_at'
+    )
+    
+    # Calculate summary statistics
+    total_assigned = assigned_tasks.count()
+    
+    # Status breakdown
+    status_counts = {
+        'SUBMITTED': assigned_tasks.filter(status='SUBMITTED').count(),
+        'IN_PROGRESS': assigned_tasks.filter(status='IN_PROGRESS').count(),
+        'SCHEDULED': assigned_tasks.filter(status='SCHEDULED').count(),
+        'COMPLETED': assigned_tasks.filter(status='COMPLETED').count(),
+    }
+    
+    # Priority breakdown
+    priority_counts = {
+        'EMERGENCY': assigned_tasks.filter(priority='EMERGENCY').count(),
+        'HIGH': assigned_tasks.filter(priority='HIGH').count(),
+        'MEDIUM': assigned_tasks.filter(priority='MEDIUM').count(),
+        'LOW': assigned_tasks.filter(priority='LOW').count(),
+    }
+    
+    # Active tasks (not completed)
+    active_tasks = assigned_tasks.exclude(status='COMPLETED').count()
+    
+    # Overdue tasks (scheduled in the past but not completed)
+    overdue_tasks = assigned_tasks.filter(
+        scheduled_date__lt=timezone.now(),
+        status__in=['SUBMITTED', 'IN_PROGRESS', 'SCHEDULED']
+    ).count()
+    
+    # Upcoming scheduled tasks (within next 7 days)
+    upcoming_tasks = assigned_tasks.filter(
+        scheduled_date__gte=timezone.now(),
+        scheduled_date__lte=timezone.now() + timedelta(days=7),
+        status='SCHEDULED'
+    ).count()
+    
+    # Recent completions (last 30 days)
+    recent_completions = assigned_tasks.filter(
+        status='COMPLETED',
+        updated_at__gte=timezone.now() - timedelta(days=30)
+    ).count()
+    
+    # Get available categories for filter dropdown
+    categories = MaintenanceCategory.objects.all()
+    
+    # Pagination
+    from django.core.paginator import Paginator
+    paginator = Paginator(assigned_tasks, 10)  # Show 10 tasks per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'assigned_tasks': page_obj,
+        'total_assigned': total_assigned,
+        'active_tasks': active_tasks,
+        'overdue_tasks': overdue_tasks,
+        'upcoming_tasks': upcoming_tasks,
+        'recent_completions': recent_completions,
+        'status_counts': status_counts,
+        'priority_counts': priority_counts,
+        'categories': categories,
+        'status_filter': status_filter,
+        'priority_filter': priority_filter,
+        'category_filter': category_filter,
+        'search': search,
+        'user_property': request.user.property,
+    }
+    
+    return render(request, 'dashboards/employee_assigned_tasks_detail.html', context)
