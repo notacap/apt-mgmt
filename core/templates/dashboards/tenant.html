@@ -115,7 +115,7 @@
         </a>
 
         <!-- Lease Info -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <a href="{% url 'core:tenant_lease_end_detail' %}" class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow duration-200 block">
             <div class="flex items-center">
                 <div class="flex-1">
                     <p class="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Lease End</p>
@@ -149,10 +149,10 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </a>
 
         <!-- Maintenance Requests -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <a href="{% url 'core:tenant_maintenance_requests_detail' %}" class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 block hover:shadow-md transition-shadow duration-200">
             <div class="flex items-center">
                 <div class="flex-1">
                     <p class="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Open Requests</p>
@@ -168,7 +168,7 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </a>
 
         <!-- Messages -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">

@@ -67,21 +67,23 @@
         <div class="px-6 py-4">
             <form method="GET" class="flex flex-wrap items-center gap-4">
                 <input type="hidden" name="date" value="{{ start_date|date:'Y-m-d' }}">
+                {% if user.role != 'TENANT' %}
                 <div class="flex items-center space-x-2">
                     <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Property:</label>
-                    {{ filter_form.property }}
+                    {{ filter_form.property|add_form_control }}
                 </div>
+                {% endif %}
                 <div class="flex items-center space-x-2">
                     <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Type:</label>
-                    {{ filter_form.event_type }}
+                    {{ filter_form.event_type|add_form_control }}
                 </div>
                 <div class="flex items-center space-x-2">
-                    {{ filter_form.assigned_to_me }}
+                    {{ filter_form.assigned_to_me|add_checkbox_class }}
                     <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Assigned to me</label>
                 </div>
                 {% if user.role != 'TENANT' %}
                 <div class="flex items-center space-x-2">
-                    {{ filter_form.created_by_me }}
+                    {{ filter_form.created_by_me|add_checkbox_class }}
                     <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Created by me</label>
                 </div>
                 {% endif %}

@@ -8,7 +8,7 @@ from users.forms import LandlordCreationForm, InvitationForm, UserProfileForm, I
 from users.models import User, Invitation
 from django.contrib.auth.models import Group
 from documents.models import Document, DocumentShare
-from maintenance.models import MaintenanceRequest, MaintenanceInvoice
+from maintenance.models import MaintenanceRequest, MaintenanceInvoice, MaintenanceCategory
 from communication.models import MessageThread
 from properties.models import ApartmentUnit
 from financials.models import PaymentSchedule, RentPayment, ExpenseRecord
@@ -2550,3 +2550,309 @@ def tenant_rent_status_detail(request):
     }
     
     return render(request, 'dashboards/tenant_rent_status_detail.html', context)
+
+@login_required
+def tenant_lease_end_detail(request):
+    """Detailed view for tenant lease information and renewal options"""
+    if not request.user.company:
+        messages.error(request, "You must be assigned to a company to access this page.")
+        return redirect("core:login")
+    
+    # Only allow tenants to access this view
+    if request.user.role != User.Role.TENANT:
+        messages.error(request, "You do not have permission to access this page.")
+        return redirect("core:dashboard_redirect")
+    
+    # Get tenant's current payment schedule (lease information)
+    current_schedule = PaymentSchedule.objects.filter(
+        tenant=request.user,
+        is_active=True
+    ).select_related('apartment_unit', 'apartment_unit__property').first()
+    
+    # Calculate lease information
+    today = timezone.now().date()
+    lease_status = 'no_lease'
+    days_until_lease_end = None
+    days_since_lease_end = None
+    lease_end_date = None
+    lease_length_days = None
+    lease_length_months = None
+    
+    if current_schedule:
+        if current_schedule.end_date:
+            lease_end_date = current_schedule.end_date
+            days_until_lease_end = (current_schedule.end_date - today).days
+            
+            if current_schedule.end_date < today:
+                lease_status = 'expired'
+                days_since_lease_end = abs(days_until_lease_end)
+                days_until_lease_end = None  # Clear this for expired leases
+            elif days_until_lease_end <= 30:
+                lease_status = 'expiring_soon'
+            elif days_until_lease_end <= 90:
+                lease_status = 'expiring_later'
+            else:
+                lease_status = 'active'
+            
+            # Calculate lease length
+            if current_schedule.start_date:
+                lease_length_days = (current_schedule.end_date - current_schedule.start_date).days
+                lease_length_months = round(lease_length_days / 30.44)  # Average days per month
+        else:
+            lease_status = 'month_to_month'
+    
+    # Get lease history (previous payment schedules for this tenant)
+    lease_history = PaymentSchedule.objects.filter(
+        tenant=request.user,
+        is_active=False
+    ).select_related('apartment_unit', 'apartment_unit__property').order_by('-end_date')
+    
+    # Calculate renewal timeline
+    renewal_milestones = []
+    if current_schedule and current_schedule.end_date and lease_status in ['active', 'expiring_later', 'expiring_soon']:
+        # 90 days before expiration - Initial renewal notice
+        notice_90_days = current_schedule.end_date - timedelta(days=90)
+        renewal_milestones.append({
+            'date': notice_90_days,
+            'title': 'Renewal Notice Period',
+            'description': 'Typical time to receive lease renewal notice',
+            'status': 'completed' if today >= notice_90_days else 'upcoming',
+            'urgency': 'low'
+        })
+        
+        # 60 days before expiration - Renewal decision time
+        decision_60_days = current_schedule.end_date - timedelta(days=60)
+        renewal_milestones.append({
+            'date': decision_60_days,
+            'title': 'Decision Deadline Approaching',
+            'description': 'Time to make renewal decision',
+            'status': 'completed' if today >= decision_60_days else 'upcoming',
+            'urgency': 'medium'
+        })
+        
+        # 30 days before expiration - Final notice
+        final_30_days = current_schedule.end_date - timedelta(days=30)
+        renewal_milestones.append({
+            'date': final_30_days,
+            'title': 'Final Notice Period',
+            'description': 'Last chance to finalize renewal or moving plans',
+            'status': 'completed' if today >= final_30_days else 'upcoming',
+            'urgency': 'high'
+        })
+        
+        # Lease end date
+        renewal_milestones.append({
+            'date': current_schedule.end_date,
+            'title': 'Lease Expires',
+            'description': 'Current lease agreement ends',
+            'status': 'completed' if today >= current_schedule.end_date else 'upcoming',
+            'urgency': 'critical'
+        })
+    
+    # Calculate important dates and statistics
+    lease_stats = {
+        'total_lease_periods': PaymentSchedule.objects.filter(tenant=request.user).count(),
+        'current_property_tenure': None,
+        'average_lease_length': None,
+        'longest_lease': None,
+    }
+    
+    # Calculate current property tenure
+    if current_schedule and current_schedule.start_date:
+        lease_stats['current_property_tenure'] = (today - current_schedule.start_date).days
+    
+    # Calculate average lease length from completed leases
+    completed_leases = PaymentSchedule.objects.filter(
+        tenant=request.user,
+        start_date__isnull=False,
+        end_date__isnull=False
+    )
+    
+    if completed_leases.exists():
+        lease_lengths = []
+        longest_lease_days = 0
+        
+        for lease in completed_leases:
+            length = (lease.end_date - lease.start_date).days
+            lease_lengths.append(length)
+            if length > longest_lease_days:
+                longest_lease_days = length
+        
+        if lease_lengths:
+            lease_stats['average_lease_length'] = round(sum(lease_lengths) / len(lease_lengths))
+            lease_stats['longest_lease'] = longest_lease_days
+    
+    # Get related information
+    # Recent maintenance requests for this tenant
+    recent_maintenance = MaintenanceRequest.objects.filter(
+        tenant=request.user
+    ).order_by('-created_at')[:5]
+    
+    # Recent payments
+    recent_payments = RentPayment.objects.filter(
+        payment_schedule__tenant=request.user
+    ).order_by('-due_date')[:5]
+    
+    context = {
+        'current_schedule': current_schedule,
+        'lease_status': lease_status,
+        'days_until_lease_end': days_until_lease_end,
+        'days_since_lease_end': days_since_lease_end,
+        'lease_end_date': lease_end_date,
+        'lease_length_days': lease_length_days,
+        'lease_length_months': lease_length_months,
+        'lease_history': lease_history,
+        'renewal_milestones': renewal_milestones,
+        'lease_stats': lease_stats,
+        'recent_maintenance': recent_maintenance,
+        'recent_payments': recent_payments,
+        'today': today,
+    }
+    
+    return render(request, 'dashboards/tenant_lease_end_detail.html', context)
+
+
+@login_required
+def tenant_maintenance_requests_detail(request):
+    """Expanded view for tenant maintenance requests"""
+    
+    # Ensure user is a tenant
+    if request.user.role != User.Role.TENANT:
+        return redirect('core:dashboard_redirect')
+    
+    # Get user's maintenance requests
+    tenant_maintenance_requests = MaintenanceRequest.objects.filter(
+        tenant=request.user
+    ).select_related(
+        'category', 'property', 'apartment_unit', 'assigned_to'
+    ).prefetch_related('photos')
+    
+    # Filter by status if provided
+    status_filter = request.GET.get('status', '')
+    if status_filter:
+        tenant_maintenance_requests = tenant_maintenance_requests.filter(status=status_filter)
+    
+    # Filter by priority if provided
+    priority_filter = request.GET.get('priority', '')
+    if priority_filter:
+        tenant_maintenance_requests = tenant_maintenance_requests.filter(priority=priority_filter)
+    
+    # Filter by date range
+    date_filter = request.GET.get('date_range', '')
+    if date_filter == 'last_week':
+        week_ago = timezone.now() - timedelta(days=7)
+        tenant_maintenance_requests = tenant_maintenance_requests.filter(created_at__gte=week_ago)
+    elif date_filter == 'last_month':
+        month_ago = timezone.now() - timedelta(days=30)
+        tenant_maintenance_requests = tenant_maintenance_requests.filter(created_at__gte=month_ago)
+    elif date_filter == 'last_year':
+        year_ago = timezone.now() - timedelta(days=365)
+        tenant_maintenance_requests = tenant_maintenance_requests.filter(created_at__gte=year_ago)
+    
+    # Calculate statistics
+    total_requests = tenant_maintenance_requests.count()
+    open_requests = tenant_maintenance_requests.exclude(status='COMPLETED').count()
+    in_progress_requests = tenant_maintenance_requests.filter(status='IN_PROGRESS').count()
+    scheduled_requests = tenant_maintenance_requests.filter(status='SCHEDULED').count()
+    completed_requests = tenant_maintenance_requests.filter(status='COMPLETED').count()
+    emergency_requests = tenant_maintenance_requests.filter(priority='EMERGENCY').count()
+    
+    # Status breakdown for charts
+    status_breakdown = {
+        'submitted': tenant_maintenance_requests.filter(status='SUBMITTED').count(),
+        'in_progress': in_progress_requests,
+        'scheduled': scheduled_requests,
+        'completed': completed_requests,
+        'cancelled': tenant_maintenance_requests.filter(status='CANCELLED').count(),
+    }
+    
+    # Priority breakdown
+    priority_breakdown = {
+        'emergency': emergency_requests,
+        'high': tenant_maintenance_requests.filter(priority='HIGH').count(),
+        'medium': tenant_maintenance_requests.filter(priority='MEDIUM').count(),
+        'low': tenant_maintenance_requests.filter(priority='LOW').count(),
+    }
+    
+    # Recent activity (last 30 days)
+    thirty_days_ago = timezone.now() - timedelta(days=30)
+    recent_activity = tenant_maintenance_requests.filter(
+        updated_at__gte=thirty_days_ago
+    ).order_by('-updated_at')[:10]
+    
+    # Average response time calculation
+    completed_with_times = tenant_maintenance_requests.filter(
+        status='COMPLETED',
+        completed_at__isnull=False
+    )
+    
+    avg_response_time_days = None
+    if completed_with_times.exists():
+        total_time = sum([
+            (req.completed_at - req.created_at).days 
+            for req in completed_with_times 
+            if req.completed_at and req.created_at
+        ])
+        avg_response_time_days = total_time / completed_with_times.count() if completed_with_times.count() > 0 else 0
+    
+    # Monthly request trend (last 6 months)
+    monthly_trends = []
+    for i in range(6):
+        month_start = (timezone.now().replace(day=1) - timedelta(days=i*30)).replace(day=1)
+        next_month = (month_start + timedelta(days=32)).replace(day=1)
+        
+        month_requests = tenant_maintenance_requests.filter(
+            created_at__gte=month_start,
+            created_at__lt=next_month
+        ).count()
+        
+        monthly_trends.append({
+            'month': month_start.strftime('%b %Y'),
+            'count': month_requests
+        })
+    
+    monthly_trends.reverse()  # Show oldest to newest
+    
+    # Categories breakdown
+    categories = MaintenanceCategory.objects.all()
+    category_stats = []
+    for category in categories:
+        count = tenant_maintenance_requests.filter(category=category).count()
+        if count > 0:
+            category_stats.append({
+                'name': category.name,
+                'count': count,
+                'is_emergency': category.is_emergency
+            })
+    
+    # Order requests by creation date (newest first)
+    tenant_maintenance_requests = tenant_maintenance_requests.order_by('-created_at')
+    
+    # Pagination
+    from django.core.paginator import Paginator
+    paginator = Paginator(tenant_maintenance_requests, 10)  # 10 requests per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'maintenance_requests': page_obj,
+        'total_requests': total_requests,
+        'open_requests': open_requests,
+        'in_progress_requests': in_progress_requests,
+        'scheduled_requests': scheduled_requests,
+        'completed_requests': completed_requests,
+        'emergency_requests': emergency_requests,
+        'status_breakdown': status_breakdown,
+        'priority_breakdown': priority_breakdown,
+        'recent_activity': recent_activity,
+        'avg_response_time_days': avg_response_time_days,
+        'monthly_trends': monthly_trends,
+        'category_stats': category_stats,
+        'status_filter': status_filter,
+        'priority_filter': priority_filter,
+        'date_filter': date_filter,
+        'status_choices': MaintenanceRequest.Status.choices,
+        'priority_choices': MaintenanceRequest.Priority.choices,
+    }
+    
+    return render(request, 'dashboards/tenant_maintenance_requests_detail.html', context)
