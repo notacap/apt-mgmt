@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load form_tags %}
 
 {% block title %}Upload Document{% endblock %}
 
@@ -24,7 +25,7 @@
                         <label for="{{ form.title.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                             Document Title *
                         </label>
-                        {{ form.title }}
+                        {{ form.title|add_form_control }}
                         {% if form.title.errors %}
                             <p class="mt-1 text-sm text-red-600">{{ form.title.errors.0 }}</p>
                         {% endif %}
@@ -34,7 +35,7 @@
                         <label for="{{ form.description.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                             Description
                         </label>
-                        {{ form.description }}
+                        {{ form.description|add_form_control }}
                         {% if form.description.errors %}
                             <p class="mt-1 text-sm text-red-600">{{ form.description.errors.0 }}</p>
                         {% endif %}
@@ -44,7 +45,7 @@
                         <label for="{{ form.file.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                             File *
                         </label>
-                        {{ form.file }}
+                        {{ form.file|add_form_control }}
                         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
                             Supported formats: PDF, DOC, DOCX, TXT, JPG, JPEG, PNG, GIF, XLSX, XLS, PPT, PPTX (Max 10MB)
                         </p>
@@ -57,7 +58,7 @@
                         <label for="{{ form.category.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                             Category
                         </label>
-                        {{ form.category }}
+                        {{ form.category|add_form_control }}
                         {% if form.category.errors %}
                             <p class="mt-1 text-sm text-red-600">{{ form.category.errors.0 }}</p>
                         {% endif %}
@@ -68,7 +69,7 @@
                         <label for="{{ form.access_level.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                             Access Level *
                         </label>
-                        {{ form.access_level }}
+                        {{ form.access_level|add_form_control }}
                         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
                             <strong>Company-wide:</strong> All users in your company can access<br>
                             <strong>Property-specific:</strong> Only users assigned to the selected property<br>
@@ -85,7 +86,7 @@
                         <label for="{{ form.property.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                             Property *
                         </label>
-                        {{ form.property }}
+                        {{ form.property|add_form_control }}
                         {% if form.property.errors %}
                             <p class="mt-1 text-sm text-red-600">{{ form.property.errors.0 }}</p>
                         {% endif %}
@@ -97,7 +98,7 @@
                         <label for="{{ form.unit.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                             Unit *
                         </label>
-                        {{ form.unit }}
+                        {{ form.unit|add_form_control }}
                         {% if form.unit.errors %}
                             <p class="mt-1 text-sm text-red-600">{{ form.unit.errors.0 }}</p>
                         {% endif %}
@@ -112,7 +113,7 @@
                         <div class="space-y-2">
                             {% for choice in form.allowed_roles %}
                                 <div class="flex items-center">
-                                    {{ choice.tag }}
+                                    {{ choice.tag|add_checkbox_class }}
                                     <label for="{{ choice.id_for_label }}" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
                                         {{ choice.choice_label }}
                                     </label>
@@ -130,10 +131,10 @@
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                             Specific Users (optional)
                         </label>
-                        <div class="space-y-2 max-h-32 overflow-y-auto border border-gray-300 rounded-md p-2">
+                        <div class="space-y-2 max-h-32 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-md p-2 bg-white dark:bg-gray-700">
                             {% for choice in form.allowed_users %}
                                 <div class="flex items-center">
-                                    {{ choice.tag }}
+                                    {{ choice.tag|add_checkbox_class }}
                                     <label for="{{ choice.id_for_label }}" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
                                         {{ choice.choice_label }}
                                     </label>
@@ -157,10 +158,10 @@
                 </div>
 
                 <div class="flex justify-end space-x-4 mt-8">
-                    <a href="{% url 'documents:list' %}" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <a href="{% url 'documents:list' %}" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 bg-white dark:bg-gray-800">
                         Cancel
                     </a>
-                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                    <button type="submit" class="px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800">
                         Upload Document
                     </button>
                 </div>

@@ -9,7 +9,7 @@ from users.models import User, Invitation
 from django.contrib.auth.models import Group
 from documents.models import Document, DocumentShare
 from maintenance.models import MaintenanceRequest, MaintenanceInvoice, MaintenanceCategory
-from communication.models import MessageThread
+from communication.models import MessageThread, Message, MessageReadStatus, Notification
 from properties.models import ApartmentUnit
 from financials.models import PaymentSchedule, RentPayment, ExpenseRecord
 from datetime import timedelta, date
@@ -2856,3 +2856,164 @@ def tenant_maintenance_requests_detail(request):
     }
     
     return render(request, 'dashboards/tenant_maintenance_requests_detail.html', context)
+
+
+@login_required
+def tenant_messages_detail(request):
+    """Expanded view for tenant messages and communications"""
+    
+    # Ensure user is a tenant
+    if request.user.role != User.Role.TENANT:
+        return redirect('core:dashboard_redirect')
+    
+    # Get user's message threads
+    message_threads = MessageThread.objects.filter(
+        participants=request.user
+    ).prefetch_related('participants', 'messages__sender', 'messages__messagereadstatus_set').order_by('-updated_at')
+    
+    # Filter by read status if provided
+    read_filter = request.GET.get('read_status', '')
+    if read_filter == 'unread':
+        # Filter threads that have unread messages for the current user
+        unread_thread_ids = []
+        for thread in message_threads:
+            unread_messages = thread.messages.exclude(
+                messagereadstatus__user=request.user
+            ).exclude(sender=request.user)
+            if unread_messages.exists():
+                unread_thread_ids.append(thread.id)
+        message_threads = message_threads.filter(id__in=unread_thread_ids)
+    elif read_filter == 'read':
+        # Filter threads where all messages are read
+        read_thread_ids = []
+        for thread in message_threads:
+            unread_messages = thread.messages.exclude(
+                messagereadstatus__user=request.user
+            ).exclude(sender=request.user)
+            if not unread_messages.exists():
+                read_thread_ids.append(thread.id)
+        message_threads = message_threads.filter(id__in=read_thread_ids)
+    
+    # Filter by date range
+    date_filter = request.GET.get('date_range', '')
+    if date_filter == 'last_week':
+        week_ago = timezone.now() - timedelta(days=7)
+        message_threads = message_threads.filter(updated_at__gte=week_ago)
+    elif date_filter == 'last_month':
+        month_ago = timezone.now() - timedelta(days=30)
+        message_threads = message_threads.filter(updated_at__gte=month_ago)
+    elif date_filter == 'last_year':
+        year_ago = timezone.now() - timedelta(days=365)
+        message_threads = message_threads.filter(updated_at__gte=year_ago)
+    
+    # Calculate statistics
+    all_threads = MessageThread.objects.filter(participants=request.user)
+    total_threads = all_threads.count()
+    
+    # Count unread threads
+    unread_threads_count = 0
+    read_threads_count = 0
+    for thread in all_threads:
+        unread_messages = thread.messages.exclude(
+            messagereadstatus__user=request.user
+        ).exclude(sender=request.user)
+        if unread_messages.exists():
+            unread_threads_count += 1
+        else:
+            read_threads_count += 1
+    
+    # Get total message counts
+    all_messages = Message.objects.filter(thread__participants=request.user)
+    total_messages = all_messages.count()
+    sent_messages = all_messages.filter(sender=request.user).count()
+    received_messages = total_messages - sent_messages
+    
+    # Count unread messages
+    unread_messages_count = 0
+    for thread in all_threads:
+        unread_messages = thread.messages.exclude(
+            messagereadstatus__user=request.user
+        ).exclude(sender=request.user)
+        unread_messages_count += unread_messages.count()
+    
+    # Recent activity (last 30 days)
+    thirty_days_ago = timezone.now() - timedelta(days=30)
+    recent_messages = Message.objects.filter(
+        thread__participants=request.user,
+        created_at__gte=thirty_days_ago
+    ).order_by('-created_at')[:10]
+    
+    # Monthly message trend (last 6 months)
+    monthly_trends = []
+    for i in range(6):
+        month_start = (timezone.now().replace(day=1) - timedelta(days=i*30)).replace(day=1)
+        next_month = (month_start + timedelta(days=32)).replace(day=1)
+        
+        month_messages = Message.objects.filter(
+            thread__participants=request.user,
+            created_at__gte=month_start,
+            created_at__lt=next_month
+        ).count()
+        
+        monthly_trends.append({
+            'month': month_start.strftime('%b %Y'),
+            'count': month_messages
+        })
+    
+    monthly_trends.reverse()  # Show oldest to newest
+    
+    # Get user's notifications
+    notifications = Notification.objects.filter(
+        recipient=request.user
+    ).order_by('-created_at')[:10]
+    
+    # Calculate response times for conversations
+    response_times = []
+    for thread in all_threads[:20]:  # Sample recent threads
+        thread_messages = thread.messages.order_by('created_at')
+        if thread_messages.count() >= 2:
+            for i in range(1, min(thread_messages.count(), 10)):  # Sample first 10 exchanges
+                current_msg = thread_messages[i]
+                previous_msg = thread_messages[i-1]
+                if current_msg.sender != previous_msg.sender:  # Different senders
+                    time_diff = (current_msg.created_at - previous_msg.created_at).total_seconds() / 3600  # hours
+                    if time_diff < 168:  # Less than a week
+                        response_times.append(time_diff)
+    
+    avg_response_time_hours = sum(response_times) / len(response_times) if response_times else None
+    
+    # Pagination
+    from django.core.paginator import Paginator
+    paginator = Paginator(message_threads, 10)  # 10 threads per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    # For each thread in the current page, calculate unread count and get participants
+    for thread in page_obj:
+        # Calculate unread count for this thread
+        unread_messages = thread.messages.exclude(
+            messagereadstatus__user=request.user
+        ).exclude(sender=request.user)
+        thread.unread_count = unread_messages.count()
+        
+        # Get other participants (exclude current user)
+        thread.other_participants = thread.participants.exclude(id=request.user.id)
+    
+    context = {
+        'message_threads': page_obj,
+        'total_threads': total_threads,
+        'unread_threads_count': unread_threads_count,
+        'read_threads_count': read_threads_count,
+        'total_messages': total_messages,
+        'sent_messages': sent_messages,
+        'received_messages': received_messages,
+        'unread_messages_count': unread_messages_count,
+        'recent_messages': recent_messages,
+        'monthly_trends': monthly_trends,
+        'notifications': notifications,
+        'avg_response_time_hours': avg_response_time_hours,
+        'read_filter': read_filter,
+        'date_filter': date_filter,
+    }
+    
+    return render(request, 'dashboards/tenant_messages_detail.html', context)
