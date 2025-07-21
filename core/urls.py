@@ -14,6 +14,7 @@ from .views import (
     custom_login,
     rent_income_detail,
     monthly_expenses_detail,
+    monthly_revenue_detail,
     maintenance_requests_detail,
     payment_status_detail,
     occupancy_rate_detail,
@@ -27,7 +28,8 @@ from .views import (
     tenant_rent_status_detail,
     tenant_lease_end_detail,
     tenant_maintenance_requests_detail,
-    tenant_messages_detail
+    tenant_messages_detail,
+    employee_list
 )
 
 app_name = "core"
@@ -46,12 +48,14 @@ urlpatterns = [
     path("dashboard/tenant/", tenant_dashboard, name="tenant_dashboard"),
     path("dashboard/rent-income/", rent_income_detail, name="rent_income_detail"),
     path("dashboard/monthly-expenses/", monthly_expenses_detail, name="monthly_expenses_detail"),
+    path("dashboard/monthly-revenue/", monthly_revenue_detail, name="monthly_revenue_detail"),
     path("dashboard/maintenance-requests/", maintenance_requests_detail, name="maintenance_requests_detail"),
     path("dashboard/payment-status/", payment_status_detail, name="payment_status_detail"),
     path("dashboard/occupancy-rate/", occupancy_rate_detail, name="occupancy_rate_detail"),
     path("dashboard/lease-expirations/", lease_expirations_detail, name="lease_expirations_detail"),
     path("dashboard/vacant-units/", vacant_units_detail, name="vacant_units_detail"),
     path("dashboard/tenants/", tenant_list, name="tenant_list"),
+    path("dashboard/employees/", employee_list, name="employee_list"),
     # Employee expanded views
     path("dashboard/employee/assigned-tasks/", employee_assigned_tasks_detail, name="employee_assigned_tasks_detail"),
     path("dashboard/employee/todays-schedule/", employee_todays_schedule_detail, name="employee_todays_schedule_detail"),

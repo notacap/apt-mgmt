@@ -460,6 +460,35 @@ def landlord_dashboard(request):
             if active_lease:
                 tenants_with_expiring_leases += 1
     
+    # Get employee data for the Employee Management card
+    employee_query = User.objects.filter(
+        company=request.user.company,
+        role=User.Role.EMPLOYEE
+    ).select_related('property')
+    
+    # Apply property filter for employees if one is selected
+    if selected_property:
+        employee_query = employee_query.filter(property=selected_property)
+    elif request.user.property:
+        employee_query = employee_query.filter(property=request.user.property)
+    
+    # Get recent employees (for display in the card)
+    recent_employees = employee_query.order_by('-date_joined')[:3]
+    
+    # Calculate employee stats
+    total_employee_count = employee_query.count()
+    company_wide_employees = User.objects.filter(
+        company=request.user.company,
+        role=User.Role.EMPLOYEE
+    ).count()
+    employees_by_property = employee_query.exclude(property__isnull=True).values('property__name').annotate(
+        count=Count('id')
+    ).order_by('property__name')
+    
+    # Recent hires in last 30 days
+    recent_cutoff = timezone.now() - timedelta(days=30)
+    recent_employee_hires = employee_query.filter(date_joined__gte=recent_cutoff).count()
+    
     context = {
         'recent_documents': recent_documents,
         'company_doc_count': company_doc_count,
@@ -510,6 +539,12 @@ def landlord_dashboard(request):
         'recent_tenants': recent_tenants,
         'total_tenant_count': total_tenant_count,
         'tenants_with_expiring_leases': tenants_with_expiring_leases,
+        # Employee data
+        'total_employee_count': total_employee_count,
+        'recent_employees': recent_employees,
+        'employees_by_property': employees_by_property,
+        'recent_employee_hires': recent_employee_hires,
+        'company_wide_employees': company_wide_employees,
     }
     
     return render(request, "dashboards/landlord.html", context)
@@ -1267,6 +1302,199 @@ def monthly_expenses_detail(request):
     }
     
     return render(request, 'dashboards/monthly_expenses_detail.html', context)
+
+@login_required
+def monthly_revenue_detail(request):
+    """Detailed view for monthly revenue metrics"""
+    if not request.user.company:
+        messages.error(request, "You must be assigned to a company to access this page.")
+        return redirect("core:login")
+    
+    # Only allow landlords and employees to access this view
+    if request.user.role not in [User.Role.LANDLORD, User.Role.EMPLOYEE]:
+        messages.error(request, "You do not have permission to access this page.")
+        return redirect("core:dashboard_redirect")
+    
+    # Get property filter from URL parameter
+    property_id = request.GET.get('property')
+    selected_property = None
+    
+    if property_id:
+        try:
+            from properties.models import Property
+            selected_property = Property.objects.get(
+                id=property_id, 
+                company=request.user.company
+            )
+        except Property.DoesNotExist:
+            selected_property = None
+    
+    # Get available properties for filter dropdown
+    from properties.models import Property
+    if request.user.role == User.Role.LANDLORD:
+        available_properties = Property.objects.filter(company=request.user.company)
+    else:  # Employee
+        if request.user.property:
+            available_properties = Property.objects.filter(id=request.user.property.id)
+        else:
+            available_properties = Property.objects.filter(company=request.user.company)
+    
+    # Date range calculations
+    current_month_start = timezone.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    current_month_end = (current_month_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+    last_month_start = (current_month_start - timedelta(days=1)).replace(day=1)
+    last_month_end = current_month_start - timedelta(days=1)
+    
+    # Income calculations (rent payments)
+    rent_payments_query = RentPayment.objects.filter(
+        payment_schedule__apartment_unit__property__company=request.user.company
+    ).select_related(
+        'payment_schedule__tenant',
+        'payment_schedule__apartment_unit',
+        'payment_schedule__apartment_unit__property'
+    )
+    
+    # Apply property filter to rent payments
+    if selected_property:
+        rent_payments_query = rent_payments_query.filter(
+            payment_schedule__apartment_unit__property=selected_property
+        )
+    elif request.user.property:
+        rent_payments_query = rent_payments_query.filter(
+            payment_schedule__apartment_unit__property=request.user.property
+        )
+    
+    # Current month income
+    current_month_income = rent_payments_query.filter(
+        due_date__gte=current_month_start,
+        due_date__lte=current_month_end,
+        status='PAID'
+    ).aggregate(total=Sum('amount_paid'))['total'] or Decimal('0.00')
+    
+    # Last month income
+    last_month_income = rent_payments_query.filter(
+        due_date__gte=last_month_start,
+        due_date__lte=last_month_end,
+        status='PAID'
+    ).aggregate(total=Sum('amount_paid'))['total'] or Decimal('0.00')
+    
+    # Expense calculations
+    expense_records_query = ExpenseRecord.objects.filter(
+        property__company=request.user.company
+    )
+    
+    maintenance_invoices_query = MaintenanceInvoice.objects.filter(
+        maintenance_request__property__company=request.user.company
+    )
+    
+    # Apply property filter to expenses
+    if selected_property:
+        expense_records_query = expense_records_query.filter(property=selected_property)
+        maintenance_invoices_query = maintenance_invoices_query.filter(
+            maintenance_request__property=selected_property
+        )
+    elif request.user.property:
+        expense_records_query = expense_records_query.filter(property=request.user.property)
+        maintenance_invoices_query = maintenance_invoices_query.filter(
+            maintenance_request__property=request.user.property
+        )
+    
+    # Current month expenses
+    current_month_expense_records = expense_records_query.filter(
+        expense_date__gte=current_month_start,
+        expense_date__lte=current_month_end
+    ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+    
+    current_month_maintenance_invoices = maintenance_invoices_query.filter(
+        invoice_date__gte=current_month_start,
+        invoice_date__lte=current_month_end
+    ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+    
+    current_month_expenses = current_month_expense_records + current_month_maintenance_invoices
+    
+    # Last month expenses
+    last_month_expense_records = expense_records_query.filter(
+        expense_date__gte=last_month_start,
+        expense_date__lte=last_month_end
+    ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+    
+    last_month_maintenance_invoices = maintenance_invoices_query.filter(
+        invoice_date__gte=last_month_start,
+        invoice_date__lte=last_month_end
+    ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+    
+    last_month_expenses = last_month_expense_records + last_month_maintenance_invoices
+    
+    # Revenue calculations
+    current_month_revenue = current_month_income - current_month_expenses
+    last_month_revenue = last_month_income - last_month_expenses
+    
+    # Revenue change percentage and amount
+    revenue_change_amount = current_month_revenue - last_month_revenue
+    revenue_change_percent = 0
+    if last_month_revenue > 0:
+        revenue_change_percent = ((current_month_revenue - last_month_revenue) / last_month_revenue) * 100
+    elif current_month_revenue != 0:
+        revenue_change_percent = 100 if current_month_revenue > 0 else -100
+    
+    # Get detailed data for breakdown
+    current_month_paid_payments = rent_payments_query.filter(
+        due_date__gte=current_month_start,
+        due_date__lte=current_month_end,
+        status='PAID'
+    ).order_by('-payment_date')
+    
+    current_month_expense_list = ExpenseRecord.objects.filter(
+        property__company=request.user.company,
+        expense_date__gte=current_month_start,
+        expense_date__lte=current_month_end
+    ).select_related('property', 'apartment_unit', 'created_by').order_by('-expense_date')
+    
+    current_month_maintenance_list = MaintenanceInvoice.objects.filter(
+        maintenance_request__property__company=request.user.company,
+        invoice_date__gte=current_month_start,
+        invoice_date__lte=current_month_end
+    ).select_related(
+        'maintenance_request__property',
+        'maintenance_request__apartment_unit',
+        'uploaded_by'
+    ).order_by('-invoice_date')
+    
+    # Apply property filter to detailed lists
+    if selected_property:
+        current_month_expense_list = current_month_expense_list.filter(property=selected_property)
+        current_month_maintenance_list = current_month_maintenance_list.filter(
+            maintenance_request__property=selected_property
+        )
+    elif request.user.property:
+        current_month_expense_list = current_month_expense_list.filter(property=request.user.property)
+        current_month_maintenance_list = current_month_maintenance_list.filter(
+            maintenance_request__property=request.user.property
+        )
+    
+    context = {
+        'current_month_income': current_month_income,
+        'current_month_expenses': current_month_expenses,
+        'current_month_revenue': current_month_revenue,
+        'last_month_income': last_month_income,
+        'last_month_expenses': last_month_expenses,
+        'last_month_revenue': last_month_revenue,
+        'revenue_change_percent': revenue_change_percent,
+        'revenue_change_amount': revenue_change_amount,
+        'current_month_expense_records': current_month_expense_records,
+        'current_month_maintenance_invoices': current_month_maintenance_invoices,
+        'current_month_paid_payments': current_month_paid_payments,
+        'current_month_expense_list': current_month_expense_list,
+        'current_month_maintenance_list': current_month_maintenance_list,
+        'selected_property': selected_property,
+        'available_properties': available_properties,
+        'current_month_start': current_month_start,
+        'current_month_end': current_month_end,
+        'total_income_entries': current_month_paid_payments.count(),
+        'total_expense_entries': current_month_expense_list.count() + current_month_maintenance_list.count(),
+    }
+    
+    return render(request, 'dashboards/monthly_revenue_detail.html', context)
 
 @login_required
 def maintenance_requests_detail(request):
@@ -3630,3 +3858,86 @@ def employee_emergency_requests_detail(request):
     }
     
     return render(request, 'dashboards/employee_emergency_requests_detail.html', context)
+
+@login_required
+def employee_list(request):
+    """Employee management list view for landlords"""
+    if not request.user.company:
+        messages.error(request, "You must be assigned to a company to access this page.")
+        return redirect("core:login")
+    
+    # Only allow landlords to access this view
+    if request.user.role != User.Role.LANDLORD:
+        messages.error(request, "You do not have permission to access this page.")
+        return redirect("core:dashboard_redirect")
+    
+    # Get filter parameters from URL
+    property_id = request.GET.get('property')
+    search_query = request.GET.get('search')
+    
+    selected_property = None
+    if property_id:
+        try:
+            from properties.models import Property
+            selected_property = Property.objects.get(
+                id=property_id, 
+                company=request.user.company
+            )
+        except Property.DoesNotExist:
+            selected_property = None
+    
+    # Base query for employees
+    employees_query = User.objects.filter(
+        company=request.user.company,
+        role=User.Role.EMPLOYEE
+    ).select_related(
+        'property',
+    ).order_by('last_name', 'first_name', 'username')
+    
+    # Apply property filter
+    if selected_property:
+        employees_query = employees_query.filter(property=selected_property)
+    
+    # Apply search filter
+    if search_query:
+        employees_query = employees_query.filter(
+            Q(first_name__icontains=search_query) |
+            Q(last_name__icontains=search_query) |
+            Q(username__icontains=search_query) |
+            Q(email__icontains=search_query)
+        )
+    
+    # Get all employees for this company
+    employees = employees_query
+    
+    # Get available properties for filter dropdown
+    from properties.models import Property
+    available_properties = Property.objects.filter(company=request.user.company)
+    
+    # Summary statistics
+    total_employees = employees.count()
+    employees_by_property = employees.exclude(property__isnull=True).values('property__name').annotate(
+        count=Count('id')
+    ).order_by('property__name')
+    
+    # Recent activity - employees who joined in last 30 days
+    recent_cutoff = timezone.now() - timedelta(days=30)
+    recent_employees = employees.filter(date_joined__gte=recent_cutoff).order_by('-date_joined')[:5]
+    
+    # Pagination
+    from django.core.paginator import Paginator
+    paginator = Paginator(employees, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'employees': page_obj,
+        'total_employees': total_employees,
+        'employees_by_property': employees_by_property,
+        'recent_employees': recent_employees,
+        'selected_property': selected_property,
+        'available_properties': available_properties,
+        'search_query': search_query,
+    }
+    
+    return render(request, 'dashboards/employee_list.html', context)

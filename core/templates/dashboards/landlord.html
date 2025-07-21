@@ -113,7 +113,7 @@
         </a>
 
         <!-- Monthly Revenue -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow duration-200">
+        <a href="{% url 'core:monthly_revenue_detail' %}{% if selected_property %}?property={{ selected_property.id }}{% endif %}" class="block bg-white dark:bg-gray-800 rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow duration-200">
             <div class="flex items-center">
                 <div class="flex-1">
                     <p class="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Monthly Revenue</p>
@@ -141,7 +141,7 @@
                     <span class="ml-1 text-sm text-red-600 dark:text-red-400">Revenue deficit</span>
                 {% endif %}
             </div>
-        </div>
+        </a>
 
         <!-- Maintenance Requests -->
         <a href="{% url 'core:maintenance_requests_detail' %}{% if selected_property %}?property={{ selected_property.id }}{% endif %}" class="block bg-white dark:bg-gray-800 rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow duration-200">
@@ -427,6 +427,66 @@
 
     <!-- Quick Actions Section -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <!-- Employee Management -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Employee Management</h3>
+                <a href="{% url 'core:employee_list' %}{% if selected_property %}?property={{ selected_property.id }}{% endif %}" class="text-blue-600 dark:text-blue-400 hover:underline text-sm">View All</a>
+            </div>
+            <div class="space-y-3">
+                {% if recent_employees %}
+                    {% for employee in recent_employees %}
+                        <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                            <div>
+                                <p class="font-medium text-gray-900 dark:text-white">{{ employee.get_full_name|default:employee.username }}</p>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">
+                                    {% if employee.property %}
+                                        {{ employee.property.name }}
+                                        {% if employee.property.name != selected_property.name and not selected_property %}
+                                            • Property Specific
+                                        {% endif %}
+                                    {% else %}
+                                        Company-wide access
+                                    {% endif %}
+                                    • Joined {{ employee.date_joined|date:"M Y" }}
+                                </p>
+                            </div>
+                            <span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-full">Employee</span>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-4">
+                        <p class="text-sm text-gray-500 dark:text-gray-400">No employees found</p>
+                        {% if selected_property %}
+                            <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">No employees assigned to {{ selected_property.name }}</p>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+            <div class="mt-4 space-y-2">
+                <!-- Summary stats -->
+                <div class="flex items-center justify-between text-sm">
+                    <span class="text-gray-600 dark:text-gray-400">Total Employees:</span>
+                    <span class="font-medium text-gray-900 dark:text-white">{{ total_employee_count }}</span>
+                </div>
+                {% if company_wide_employees != total_employee_count %}
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-gray-600 dark:text-gray-400">Company-wide:</span>
+                        <span class="font-medium text-gray-900 dark:text-white">{{ company_wide_employees }}</span>
+                    </div>
+                {% endif %}
+                {% if recent_employee_hires > 0 %}
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-gray-600 dark:text-gray-400">Recent Hires:</span>
+                        <span class="font-medium text-green-600 dark:text-green-400">{{ recent_employee_hires }} in last 30 days</span>
+                    </div>
+                {% endif %}
+                <a href="{% url 'core:send_invitation' %}" class="w-full bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 text-center block">
+                    Add New Employee
+                </a>
+            </div>
+        </div>
+
         <!-- Tenant Management -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
             <div class="flex items-center justify-between mb-4">
