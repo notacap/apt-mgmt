@@ -4,7 +4,7 @@ from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm
 from django.db.models import Q, Count
-from users.forms import LandlordCreationForm, InvitationForm, UserProfileForm, InvitationAcceptanceForm
+from users.forms import LandlordCreationForm, InvitationForm, UserProfileForm, InvitationAcceptanceForm, EmployeeManagementForm
 from users.models import User, Invitation
 from django.contrib.auth.models import Group
 from documents.models import Document, DocumentShare
@@ -1011,15 +1011,49 @@ def dashboard_redirect(request):
 
 @login_required
 def profile(request):
+    # Check if editing another user (employee management)
+    user_id = request.GET.get('user')
+    target_user = request.user
+    is_employee_management = False
+    
+    if user_id and request.user.role == User.Role.LANDLORD:
+        try:
+            target_user = User.objects.get(
+                id=user_id, 
+                company=request.user.company,
+                role=User.Role.EMPLOYEE
+            )
+            is_employee_management = True
+        except User.DoesNotExist:
+            messages.error(request, "Employee not found or access denied.")
+            return redirect("core:employee_list")
+    
     if request.method == "POST":
-        form = UserProfileForm(request.POST, instance=request.user)
+        if is_employee_management:
+            form = EmployeeManagementForm(request.POST, instance=target_user, user=request.user)
+            success_message = f"{target_user.get_full_name()}'s profile updated successfully."
+            redirect_url = "core:employee_list"
+        else:
+            form = UserProfileForm(request.POST, instance=target_user)
+            success_message = "Profile updated successfully."
+            redirect_url = "core:profile"
+            
         if form.is_valid():
             form.save()
-            messages.success(request, "Profile updated successfully.")
-            return redirect("core:profile")
+            messages.success(request, success_message)
+            return redirect(redirect_url)
     else:
-        form = UserProfileForm(instance=request.user)
-    return render(request, "accounts/profile.html", {"form": form})
+        if is_employee_management:
+            form = EmployeeManagementForm(instance=target_user, user=request.user)
+        else:
+            form = UserProfileForm(instance=target_user)
+    
+    context = {
+        "form": form,
+        "target_user": target_user,
+        "is_employee_management": is_employee_management,
+    }
+    return render(request, "accounts/profile.html", context)
 
 @login_required
 def get_available_units(request, property_id):

@@ -115,6 +115,79 @@ class UserProfileForm(forms.ModelForm):
     class Meta:
         model = User
         fields = ["first_name", "last_name", "email"]
+        widgets = {
+            'first_name': forms.TextInput(attrs={
+                'class': 'w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-colors',
+                'placeholder': 'First Name'
+            }),
+            'last_name': forms.TextInput(attrs={
+                'class': 'w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-colors',
+                'placeholder': 'Last Name'
+            }),
+            'email': forms.EmailInput(attrs={
+                'class': 'w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-colors',
+                'placeholder': 'Email Address'
+            }),
+        }
+        labels = {
+            'first_name': 'First Name',
+            'last_name': 'Last Name',
+            'email': 'Email Address',
+        }
+
+class EmployeeManagementForm(forms.ModelForm):
+    """Form for landlords to edit employee details and property assignments"""
+    property = forms.ModelChoiceField(
+        queryset=Property.objects.none(), 
+        required=False,
+        help_text="Assign employee to a specific property (leave blank for company-wide access)",
+        label="Property Assignment"
+    )
+    
+    class Meta:
+        model = User
+        fields = ["first_name", "last_name", "email", "phone_number", "property"]
+        widgets = {
+            'first_name': forms.TextInput(attrs={
+                'class': 'w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-colors',
+                'placeholder': 'First Name'
+            }),
+            'last_name': forms.TextInput(attrs={
+                'class': 'w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-colors',
+                'placeholder': 'Last Name'
+            }),
+            'email': forms.EmailInput(attrs={
+                'class': 'w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-colors',
+                'placeholder': 'Email Address'
+            }),
+            'phone_number': forms.TextInput(attrs={
+                'class': 'w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-colors',
+                'placeholder': '(555) 123-4567'
+            }),
+        }
+        labels = {
+            'first_name': 'First Name',
+            'last_name': 'Last Name',
+            'email': 'Email Address',
+            'phone_number': 'Phone Number',
+        }
+        
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)  # The current user (landlord)
+        super(EmployeeManagementForm, self).__init__(*args, **kwargs)
+        
+        if user and user.company:
+            # Set property queryset based on landlord's company
+            self.fields['property'].queryset = Property.objects.filter(company=user.company)
+            
+            # Add CSS classes to the property field
+            self.fields['property'].widget.attrs.update({
+                'class': 'w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-colors'
+            })
+            
+            # Set initial property value if the employee being edited has one
+            if self.instance and hasattr(self.instance, 'property'):
+                self.fields['property'].initial = self.instance.property
 
 class InvitationAcceptanceForm(forms.ModelForm):
     password = forms.CharField(
