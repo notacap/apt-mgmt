@@ -440,11 +440,15 @@
                             <div>
                                 <p class="font-medium text-gray-900 dark:text-white">{{ employee.get_full_name|default:employee.username }}</p>
                                 <p class="text-sm text-gray-600 dark:text-gray-400">
-                                    {% if employee.property %}
-                                        {{ employee.property.name }}
-                                        {% if employee.property.name != selected_property.name and not selected_property %}
-                                            • Property Specific
+                                    {% if employee.assigned_properties.all %}
+                                        {% for property in employee.assigned_properties.all %}
+                                            {{ property.name }}{% if not forloop.last %}, {% endif %}
+                                        {% endfor %}
+                                        {% if employee.assigned_properties.count > 1 %}
+                                            • {{ employee.assigned_properties.count }} Properties
                                         {% endif %}
+                                    {% elif employee.property %}
+                                        {{ employee.property.name }} • Property Specific
                                     {% else %}
                                         Company-wide access
                                     {% endif %}

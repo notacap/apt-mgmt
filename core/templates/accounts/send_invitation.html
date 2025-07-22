@@ -45,7 +45,33 @@
             {% endfor %}
         </div>
 
-        <!-- Employee All Properties Field -->
+        <!-- Employee Property Assignments Field -->
+        <div id="assigned-properties-field" style="display:none;">
+            <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">{{ form.assigned_properties.label }}</label>
+            <div class="mt-2 space-y-3 max-h-48 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-lg p-3 dark:bg-gray-700">
+                {% for choice in form.assigned_properties %}
+                    <div class="flex items-center">
+                        <input type="checkbox" 
+                               name="{{ choice.name }}" 
+                               value="{{ choice.choice_value }}" 
+                               id="{{ choice.id_for_label }}"
+                               {% if choice.is_checked %}checked{% endif %}
+                               class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:focus:ring-blue-600 dark:ring-offset-gray-800">
+                        <label for="{{ choice.id_for_label }}" class="ml-3 text-sm text-gray-700 dark:text-gray-300">
+                            {{ choice.choice_label }}
+                        </label>
+                    </div>
+                {% endfor %}
+            </div>
+            {% if form.assigned_properties.help_text %}
+                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ form.assigned_properties.help_text }}</p>
+            {% endif %}
+            {% for error in form.assigned_properties.errors %}
+                <p class="mt-2 text-xs text-red-600 dark:text-red-400">{{ error }}</p>
+            {% endfor %}
+        </div>
+
+        <!-- Employee All Properties Field (Legacy) -->
         <div id="all-properties-field" style="display:none;">
             <label class="flex items-center cursor-pointer">
                 {{ form.all_properties|add_checkbox_class }}
@@ -120,6 +146,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const propertyField = document.getElementById('id_property');
     const tenantFields = document.getElementById('tenant-fields');
     const allPropertiesField = document.getElementById('all-properties-field');
+    const assignedPropertiesField = document.getElementById('assigned-properties-field');
     const propertyFieldDiv = document.getElementById('property-field');
     const apartmentUnitField = document.getElementById('id_apartment_unit');
     const allPropertiesCheckbox = document.getElementById('id_all_properties');
@@ -155,20 +182,23 @@ document.addEventListener('DOMContentLoaded', function() {
         if (selectedRole === 'TENANT') {
             tenantFields.style.display = 'block';
             allPropertiesField.style.display = 'none';
+            assignedPropertiesField.style.display = 'none';
             propertyField.required = true;
-            propertyFieldDiv.style.opacity = '1';
+            propertyFieldDiv.style.display = 'block';
             updateApartmentUnits();
         } else if (selectedRole === 'EMPLOYEE') {
             tenantFields.style.display = 'none';
-            allPropertiesField.style.display = 'block';
-            // Property is optional for employees if all_properties is checked
-            propertyField.required = !allPropertiesCheckbox.checked;
-            propertyFieldDiv.style.opacity = allPropertiesCheckbox.checked ? '0.5' : '1';
+            allPropertiesField.style.display = 'none';
+            assignedPropertiesField.style.display = 'block';
+            // Property field is hidden for employees since they use assigned_properties
+            propertyField.required = false;
+            propertyFieldDiv.style.display = 'none';
         } else {
             tenantFields.style.display = 'none';
             allPropertiesField.style.display = 'none';
+            assignedPropertiesField.style.display = 'none';
             propertyField.required = true;
-            propertyFieldDiv.style.opacity = '1';
+            propertyFieldDiv.style.display = 'block';
         }
     }
     

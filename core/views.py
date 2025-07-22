@@ -464,13 +464,19 @@ def landlord_dashboard(request):
     employee_query = User.objects.filter(
         company=request.user.company,
         role=User.Role.EMPLOYEE
-    ).select_related('property')
+    ).select_related('property').prefetch_related('assigned_properties')
     
     # Apply property filter for employees if one is selected
     if selected_property:
-        employee_query = employee_query.filter(property=selected_property)
+        # Filter employees who either have this property in their assigned_properties or in the legacy property field
+        employee_query = employee_query.filter(
+            Q(assigned_properties=selected_property) | Q(property=selected_property)
+        )
     elif request.user.property:
-        employee_query = employee_query.filter(property=request.user.property)
+        # Filter employees who either have the user's property in their assigned_properties or in the legacy property field
+        employee_query = employee_query.filter(
+            Q(assigned_properties=request.user.property) | Q(property=request.user.property)
+        )
     
     # Get recent employees (for display in the card)
     recent_employees = employee_query.order_by('-date_joined')[:3]
@@ -884,6 +890,10 @@ def send_invitation(request):
             invitation.company = request.user.company
             invitation.save()
             
+            # Handle many-to-many field for assigned_properties
+            if 'assigned_properties' in form.cleaned_data:
+                invitation.assigned_properties.set(form.cleaned_data['assigned_properties'])
+            
             # Send invitation email
             invitation_url = request.build_absolute_uri(f"/accept-invitation/{invitation.token}/")
             
@@ -894,10 +904,17 @@ def send_invitation(request):
                 if invitation.apartment_unit:
                     role_info += f", Unit {invitation.apartment_unit.unit_number}"
             elif invitation.role == 'EMPLOYEE':
-                if invitation.all_properties:
+                assigned_properties = invitation.assigned_properties.all()
+                if assigned_properties:
+                    property_names = [prop.name for prop in assigned_properties]
+                    if len(property_names) == 1:
+                        role_info = f"as an Employee for {property_names[0]}"
+                    else:
+                        role_info = f"as an Employee for {', '.join(property_names[:-1])} and {property_names[-1]}"
+                elif invitation.all_properties:
                     role_info = f"as an Employee with access to all properties"
                 else:
-                    role_info = f"as an Employee for {invitation.property.name}"
+                    role_info = f"as an Employee with company-wide access"
             else:
                 role_info = f"as {invitation.get_role_display()}"
             
@@ -981,10 +998,15 @@ def accept_invitation(request, token):
                     )
             
             # Handle employee-specific setup
-            elif invitation.role == 'EMPLOYEE' and invitation.all_properties:
-                # If employee has access to all properties, clear the specific property assignment
-                user.property = None
-                user.save()
+            elif invitation.role == 'EMPLOYEE':
+                # Set up multi-property assignments for employees
+                if invitation.assigned_properties.exists():
+                    # Assign specific properties
+                    user.assigned_properties.set(invitation.assigned_properties.all())
+                elif invitation.all_properties:
+                    # Legacy: If employee has access to all properties, clear assignments (company-wide access)
+                    user.property = None
+                    user.save()
 
             invitation.is_accepted = True
             invitation.save()
@@ -3926,11 +3948,16 @@ def employee_list(request):
         role=User.Role.EMPLOYEE
     ).select_related(
         'property',
+    ).prefetch_related(
+        'assigned_properties'
     ).order_by('last_name', 'first_name', 'username')
     
     # Apply property filter
     if selected_property:
-        employees_query = employees_query.filter(property=selected_property)
+        # Filter employees who either have this property in their assigned_properties or in the legacy property field
+        employees_query = employees_query.filter(
+            Q(assigned_properties=selected_property) | Q(property=selected_property)
+        )
     
     # Apply search filter
     if search_query:

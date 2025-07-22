@@ -168,12 +168,25 @@
                                     </div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    {% if employee.property %}
+                                    {% if employee.assigned_properties.all %}
+                                        <div class="text-sm font-medium text-gray-900 dark:text-white">
+                                            {% for property in employee.assigned_properties.all %}
+                                                {{ property.name }}{% if not forloop.last %}, {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                        <div class="text-sm text-gray-500 dark:text-gray-400">
+                                            {% if employee.assigned_properties.count == 1 %}
+                                                Property Specific
+                                            {% else %}
+                                                {{ employee.assigned_properties.count }} Properties
+                                            {% endif %}
+                                        </div>
+                                    {% elif employee.property %}
                                         <div class="text-sm font-medium text-gray-900 dark:text-white">
                                             {{ employee.property.name }}
                                         </div>
                                         <div class="text-sm text-gray-500 dark:text-gray-400">
-                                            Property Specific
+                                            Property Specific (Legacy)
                                         </div>
                                     {% else %}
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">

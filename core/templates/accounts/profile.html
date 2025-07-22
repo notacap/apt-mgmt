@@ -60,7 +60,25 @@
                             {% endif %}
                         </label>
                         
-                        {{ field }}
+                        {% if field.name == 'assigned_properties' %}
+                            <div class="mt-2 space-y-3">
+                                {% for choice in field %}
+                                    <div class="flex items-center">
+                                        <input type="checkbox" 
+                                               name="{{ choice.name }}" 
+                                               value="{{ choice.choice_value }}" 
+                                               id="{{ choice.id_for_label }}"
+                                               {% if choice.is_checked %}checked{% endif %}
+                                               class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:focus:ring-blue-600 dark:ring-offset-gray-800">
+                                        <label for="{{ choice.id_for_label }}" class="ml-3 text-sm text-gray-700 dark:text-gray-300">
+                                            {{ choice.choice_label }}
+                                        </label>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            {{ field }}
+                        {% endif %}
                         
                         {% if field.help_text %}
                             <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ field.help_text }}</p>

@@ -34,17 +34,26 @@ class InvitationForm(forms.ModelForm):
         required=False,
         help_text="Select unit for tenant invitations"
     )
+    assigned_properties = forms.ModelMultipleChoiceField(
+        queryset=Property.objects.none(),
+        required=False,
+        widget=forms.CheckboxSelectMultiple(attrs={
+            'class': 'space-y-2'
+        }),
+        help_text="Select properties this employee will have access to (leave empty for company-wide access)",
+        label="Property Assignments (for employees)"
+    )
     
     class Meta:
         model = Invitation
-        fields = ["email", "role", "property", "apartment_unit", "lease_length_months", 
+        fields = ["email", "role", "property", "apartment_unit", "assigned_properties", "lease_length_months", 
                  "rent_payment_date", "lease_start_date", "all_properties"]
         labels = {
             'apartment_unit': 'Apartment Unit',
             'lease_length_months': 'Lease Length',
             'rent_payment_date': 'Payment Day',
             'lease_start_date': 'Lease Start Date',
-            'all_properties': 'Grant access to all properties'
+            'all_properties': 'Grant access to all properties (legacy)'
         }
         widgets = {
             'lease_start_date': forms.DateInput(attrs={'type': 'date'}),
@@ -57,6 +66,7 @@ class InvitationForm(forms.ModelForm):
         if user:
             # Set property queryset based on user's company
             self.fields['property'].queryset = Property.objects.filter(company=user.company)
+            self.fields['assigned_properties'].queryset = Property.objects.filter(company=user.company)
             
             # Set apartment unit queryset to include all units in user's company
             # This allows the form validation to pass
@@ -105,9 +115,30 @@ class InvitationForm(forms.ModelForm):
             cleaned_data['lease_length_months'] = None
             cleaned_data['rent_payment_date'] = None
             cleaned_data['lease_start_date'] = None
-            # If all_properties is True, property can be None
-            if cleaned_data.get('all_properties') and not property_obj:
+            
+            # Handle property assignments for employees
+            assigned_properties = cleaned_data.get('assigned_properties')
+            all_properties = cleaned_data.get('all_properties')
+            
+            # If specific properties are assigned, ensure property field matches the first one
+            # or clear it if multiple properties are selected
+            if assigned_properties:
+                if len(assigned_properties) == 1:
+                    # Single property assignment - set the property field for backward compatibility
+                    cleaned_data['property'] = assigned_properties[0]
+                else:
+                    # Multiple properties - clear the single property field
+                    cleaned_data['property'] = None
+                # Clear all_properties flag when specific properties are assigned
+                cleaned_data['all_properties'] = False
+            elif all_properties:
+                # Legacy all_properties flag - clear specific assignments
                 cleaned_data['property'] = None
+                cleaned_data['assigned_properties'] = []
+            else:
+                # No specific assignments and not all_properties - this means company-wide access
+                cleaned_data['property'] = None
+                cleaned_data['assigned_properties'] = []
         
         return cleaned_data
 
@@ -137,16 +168,19 @@ class UserProfileForm(forms.ModelForm):
 
 class EmployeeManagementForm(forms.ModelForm):
     """Form for landlords to edit employee details and property assignments"""
-    property = forms.ModelChoiceField(
-        queryset=Property.objects.none(), 
+    assigned_properties = forms.ModelMultipleChoiceField(
+        queryset=Property.objects.none(),
         required=False,
-        help_text="Assign employee to a specific property (leave blank for company-wide access)",
-        label="Property Assignment"
+        widget=forms.CheckboxSelectMultiple(attrs={
+            'class': 'space-y-2'
+        }),
+        help_text="Select properties this employee will have access to (leave empty for company-wide access)",
+        label="Property Assignments"
     )
     
     class Meta:
         model = User
-        fields = ["first_name", "last_name", "email", "phone_number", "property"]
+        fields = ["first_name", "last_name", "email", "phone_number", "assigned_properties"]
         widgets = {
             'first_name': forms.TextInput(attrs={
                 'class': 'w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-colors',
@@ -178,16 +212,11 @@ class EmployeeManagementForm(forms.ModelForm):
         
         if user and user.company:
             # Set property queryset based on landlord's company
-            self.fields['property'].queryset = Property.objects.filter(company=user.company)
+            self.fields['assigned_properties'].queryset = Property.objects.filter(company=user.company)
             
-            # Add CSS classes to the property field
-            self.fields['property'].widget.attrs.update({
-                'class': 'w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-colors'
-            })
-            
-            # Set initial property value if the employee being edited has one
-            if self.instance and hasattr(self.instance, 'property'):
-                self.fields['property'].initial = self.instance.property
+            # Set initial values if the employee being edited has assigned properties
+            if self.instance and self.instance.pk:
+                self.fields['assigned_properties'].initial = self.instance.assigned_properties.all()
 
 class InvitationAcceptanceForm(forms.ModelForm):
     password = forms.CharField(
