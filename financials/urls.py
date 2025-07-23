@@ -21,7 +21,7 @@ urlpatterns = [
     
     # Expense URLs
     path('expenses/', views.expense_list, name='expense_list'),
-    path('expenses/create/', views.create_expense, name='create_expense'),
+    path('expenses/create/', views.expense_create, name='expense_create'),
     path('expenses/<int:pk>/', views.expense_detail, name='expense_detail'),
     path('expenses/<int:pk>/edit/', views.edit_expense, name='edit_expense'),
     path('expenses/<int:pk>/delete/', views.delete_expense, name='delete_expense'),

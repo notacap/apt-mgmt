@@ -391,9 +391,29 @@ def expense_list(request):
     # Placeholder
     pass
 
-def create_expense(request):
-    # Placeholder
-    pass
+@login_required
+def expense_create(request):
+    """Create a new expense record"""
+    if request.user.role not in ['LANDLORD', 'EMPLOYEE']:
+        messages.error(request, "You don't have permission to access this page.")
+        return redirect('core:dashboard_redirect')
+    
+    if request.method == 'POST':
+        form = ExpenseRecordForm(request.POST, user=request.user)
+        if form.is_valid():
+            expense = form.save(commit=False)
+            expense.created_by = request.user
+            expense.save()
+            messages.success(request, f"Expense '{expense.description}' has been created successfully.")
+            return redirect('core:monthly_expenses_detail')
+    else:
+        form = ExpenseRecordForm(user=request.user)
+    
+    context = {
+        'form': form,
+        'page_title': 'Enter New Expense'
+    }
+    return render(request, 'financials/expense_create.html', context)
 
 def expense_detail(request, pk):
     # Placeholder
@@ -415,9 +435,24 @@ def download_receipt(request, payment_id):
     # Placeholder
     pass
 
+@login_required
 def units_by_property(request):
-    # Placeholder for HTMX
-    pass
+    """HTMX endpoint to get apartment units for a selected property"""
+    property_id = request.GET.get('property_id')
+    if property_id:
+        from properties.models import ApartmentUnit
+        units = ApartmentUnit.objects.filter(
+            property_id=property_id,
+            property__company=request.user.company
+        ).order_by('unit_number')
+        
+        # Build HTML options for the select field
+        options = '<option value="">---------</option>'
+        for unit in units:
+            options += f'<option value="{unit.id}">Unit {unit.unit_number}</option>'
+        
+        return HttpResponse(options)
+    return HttpResponse('<option value="">---------</option>')
 
 def financial_reports(request):
     # Placeholder
