@@ -143,7 +143,7 @@ FILE_UPLOAD_PERMISSIONS = 0o644
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 LOGIN_REDIRECT_URL = "core:dashboard_redirect"
-LOGIN_URL = "login"
+LOGIN_URL = "core:login"
 
 # Email Configuration
 # For development - emails will be printed to console

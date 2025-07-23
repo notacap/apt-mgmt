@@ -143,10 +143,45 @@ class InvitationForm(forms.ModelForm):
         return cleaned_data
 
 class UserProfileForm(forms.ModelForm):
+    # Password fields for optional password change
+    current_password = forms.CharField(
+        widget=forms.PasswordInput(attrs={
+            'class': 'w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-colors',
+            'placeholder': 'Enter current password'
+        }),
+        required=False,
+        label='Current Password',
+        help_text='Required only if changing password'
+    )
+    new_password = forms.CharField(
+        widget=forms.PasswordInput(attrs={
+            'class': 'w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-colors',
+            'placeholder': 'Enter new password'
+        }),
+        required=False,
+        label='New Password',
+        help_text='Leave blank to keep current password'
+    )
+    confirm_password = forms.CharField(
+        widget=forms.PasswordInput(attrs={
+            'class': 'w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-colors',
+            'placeholder': 'Confirm new password'
+        }),
+        required=False,
+        label='Confirm New Password'
+    )
+
     class Meta:
         model = User
-        fields = ["first_name", "last_name", "email"]
+        fields = [
+            "username", "first_name", "last_name", "email", "phone_number",
+            "emergency_contact_name", "emergency_contact_phone", "emergency_contact_relationship"
+        ]
         widgets = {
+            'username': forms.TextInput(attrs={
+                'class': 'w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-colors',
+                'placeholder': 'Username'
+            }),
             'first_name': forms.TextInput(attrs={
                 'class': 'w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-colors',
                 'placeholder': 'First Name'
@@ -159,12 +194,66 @@ class UserProfileForm(forms.ModelForm):
                 'class': 'w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-colors',
                 'placeholder': 'Email Address'
             }),
+            'phone_number': forms.TextInput(attrs={
+                'class': 'w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-colors',
+                'placeholder': '(555) 123-4567'
+            }),
+            'emergency_contact_name': forms.TextInput(attrs={
+                'class': 'w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-colors',
+                'placeholder': 'Emergency contact full name'
+            }),
+            'emergency_contact_phone': forms.TextInput(attrs={
+                'class': 'w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-colors',
+                'placeholder': '(555) 123-4567'
+            }),
+            'emergency_contact_relationship': forms.TextInput(attrs={
+                'class': 'w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-colors',
+                'placeholder': 'e.g., Spouse, Parent, Sibling, Friend'
+            }),
         }
         labels = {
+            'username': 'Username',
             'first_name': 'First Name',
             'last_name': 'Last Name',
             'email': 'Email Address',
+            'phone_number': 'Phone Number',
+            'emergency_contact_name': 'Emergency Contact Name',
+            'emergency_contact_phone': 'Emergency Contact Phone',
+            'emergency_contact_relationship': 'Relationship to Emergency Contact',
         }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        current_password = cleaned_data.get('current_password')
+        new_password = cleaned_data.get('new_password')
+        confirm_password = cleaned_data.get('confirm_password')
+
+        # Password validation logic
+        if new_password or confirm_password:
+            if not current_password:
+                self.add_error('current_password', 'Current password is required to change password.')
+            elif not self.instance.check_password(current_password):
+                self.add_error('current_password', 'Current password is incorrect.')
+            
+            if new_password != confirm_password:
+                self.add_error('confirm_password', 'New passwords do not match.')
+            
+            if new_password and len(new_password) < 8:
+                self.add_error('new_password', 'Password must be at least 8 characters long.')
+
+        return cleaned_data
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        
+        # Handle password change if provided
+        new_password = self.cleaned_data.get('new_password')
+        if new_password:
+            user.set_password(new_password)
+        
+        if commit:
+            user.save()
+        return user
 
 class EmployeeManagementForm(forms.ModelForm):
     """Form for landlords to edit employee details and property assignments"""

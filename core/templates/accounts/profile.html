@@ -50,48 +50,133 @@
         <form method="post" class="p-6">
             {% csrf_token %}
             
-            <div class="space-y-6">
-                {% for field in form %}
-                    <div>
-                        <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            {{ field.label }}
-                            {% if field.field.required %}
-                                <span class="text-red-500">*</span>
-                            {% endif %}
-                        </label>
-                        
-                        {% if field.name == 'assigned_properties' %}
-                            <div class="mt-2 space-y-3">
-                                {% for choice in field %}
-                                    <div class="flex items-center">
-                                        <input type="checkbox" 
-                                               name="{{ choice.name }}" 
-                                               value="{{ choice.choice_value }}" 
-                                               id="{{ choice.id_for_label }}"
-                                               {% if choice.is_checked %}checked{% endif %}
-                                               class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:focus:ring-blue-600 dark:ring-offset-gray-800">
-                                        <label for="{{ choice.id_for_label }}" class="ml-3 text-sm text-gray-700 dark:text-gray-300">
-                                            {{ choice.choice_label }}
-                                        </label>
-                                    </div>
-                                {% endfor %}
+            <!-- Basic Information Section -->
+            <div class="mb-8">
+                <h4 class="text-md font-medium text-gray-900 dark:text-white mb-4 border-b border-gray-200 dark:border-gray-700 pb-2">Basic Information</h4>
+                <div class="space-y-6">
+                    {% for field in form %}
+                        {% if field.name == 'username' or field.name == 'first_name' or field.name == 'last_name' or field.name == 'email' or field.name == 'phone_number' %}
+                            <div>
+                                <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    {{ field.label }}
+                                    {% if field.field.required %}
+                                        <span class="text-red-500">*</span>
+                                    {% endif %}
+                                </label>
+                                {{ field }}
+                                {% if field.help_text %}
+                                    <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ field.help_text }}</p>
+                                {% endif %}
+                                {% if field.errors %}
+                                    {% for error in field.errors %}
+                                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+                                    {% endfor %}
+                                {% endif %}
                             </div>
-                        {% else %}
-                            {{ field }}
                         {% endif %}
-                        
-                        {% if field.help_text %}
-                            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ field.help_text }}</p>
-                        {% endif %}
-                        
-                        {% if field.errors %}
-                            {% for error in field.errors %}
-                                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
-                            {% endfor %}
-                        {% endif %}
-                    </div>
-                {% endfor %}
+                    {% endfor %}
+                </div>
             </div>
+
+            <!-- Password Change Section (only for non-employee management) -->
+            {% if not is_employee_management %}
+                <div class="mb-8">
+                    <h4 class="text-md font-medium text-gray-900 dark:text-white mb-4 border-b border-gray-200 dark:border-gray-700 pb-2">Change Password</h4>
+                    <div class="space-y-6">
+                        {% for field in form %}
+                            {% if field.name == 'current_password' or field.name == 'new_password' or field.name == 'confirm_password' %}
+                                <div>
+                                    <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                        {{ field.label }}
+                                        {% if field.field.required %}
+                                            <span class="text-red-500">*</span>
+                                        {% endif %}
+                                    </label>
+                                    {{ field }}
+                                    {% if field.help_text %}
+                                        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ field.help_text }}</p>
+                                    {% endif %}
+                                    {% if field.errors %}
+                                        {% for error in field.errors %}
+                                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+                                        {% endfor %}
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Emergency Contact Section -->
+            <div class="mb-8">
+                <h4 class="text-md font-medium text-gray-900 dark:text-white mb-4 border-b border-gray-200 dark:border-gray-700 pb-2">Emergency Contact Information</h4>
+                <div class="space-y-6">
+                    {% for field in form %}
+                        {% if field.name == 'emergency_contact_name' or field.name == 'emergency_contact_phone' or field.name == 'emergency_contact_relationship' %}
+                            <div>
+                                <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    {{ field.label }}
+                                    {% if field.field.required %}
+                                        <span class="text-red-500">*</span>
+                                    {% endif %}
+                                </label>
+                                {{ field }}
+                                {% if field.help_text %}
+                                    <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ field.help_text }}</p>
+                                {% endif %}
+                                {% if field.errors %}
+                                    {% for error in field.errors %}
+                                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Property Assignments Section (for employee management) -->
+            {% if is_employee_management %}
+                <div class="mb-8">
+                    <h4 class="text-md font-medium text-gray-900 dark:text-white mb-4 border-b border-gray-200 dark:border-gray-700 pb-2">Property Assignments</h4>
+                    {% for field in form %}
+                        {% if field.name == 'assigned_properties' %}
+                            <div>
+                                <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    {{ field.label }}
+                                    {% if field.field.required %}
+                                        <span class="text-red-500">*</span>
+                                    {% endif %}
+                                </label>
+                                <div class="mt-2 space-y-3">
+                                    {% for choice in field %}
+                                        <div class="flex items-center">
+                                            <input type="checkbox" 
+                                                   name="{{ choice.name }}" 
+                                                   value="{{ choice.choice_value }}" 
+                                                   id="{{ choice.id_for_label }}"
+                                                   {% if choice.is_checked %}checked{% endif %}
+                                                   class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:focus:ring-blue-600 dark:ring-offset-gray-800">
+                                            <label for="{{ choice.id_for_label }}" class="ml-3 text-sm text-gray-700 dark:text-gray-300">
+                                                {{ choice.choice_label }}
+                                            </label>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                                {% if field.help_text %}
+                                    <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ field.help_text }}</p>
+                                {% endif %}
+                                {% if field.errors %}
+                                    {% for error in field.errors %}
+                                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            {% endif %}
             
             <!-- Form Actions -->
             <div class="mt-8 flex items-center justify-end space-x-4">
